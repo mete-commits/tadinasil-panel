@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<meta name="robots" content="noindex,nofollow">
+<title>Tadı Nasıl? • Yönetim Paneli</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#0b0f14;--bg2:#10161d;--card:#141b24;--line:#222c38;--fg:#e6edf3;--mut:#8b98a7;
+  --acc:#ff6d00;--teal:#5eead4;--blue:#60a5fa;--pink:#f472b6;--red:#f87171;--yel:#fbbf24;--grn:#4ade80;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:var(--teal)}
+.hidden{display:none!important}
+.mono{font-family:var(--mono)}
+
+/* giriş */
+#login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.lbox{width:100%;max-width:380px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center}
+.lbox h1{margin:0 0 4px;font-size:22px}
+.lbox p{margin:0 0 20px;color:var(--mut)}
+.btn{background:var(--acc);color:#111;border:0;border-radius:10px;padding:11px 16px;font-weight:700}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.btn:disabled{opacity:.5}
+.err{margin-top:14px;color:var(--red);font-size:13px;text-align:left;white-space:pre-wrap;word-break:break-word}
+
+/* üst çubuk */
+header{position:sticky;top:0;z-index:20;background:rgba(11,15,20,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;gap:10px;padding:10px 14px}
+.logo{font-weight:800;letter-spacing:.2px}
+.logo b{color:var(--acc)}
+.sp{flex:1}
+.who{color:var(--mut);font-size:12px;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ib{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.tabs{display:flex;gap:2px;overflow-x:auto;padding:0 10px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{background:none;border:0;border-bottom:2px solid transparent;padding:9px 12px;color:var(--mut);white-space:nowrap;font-weight:600}
+.tab.on{color:var(--fg);border-color:var(--acc)}
+main{max-width:1200px;margin:0 auto;padding:14px}
+.meta{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:12px;margin-bottom:12px;flex-wrap:wrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--grn);display:inline-block}
+.warn{background:#2a1a0f;border:1px solid #5b3417;color:#ffcf9f;border-radius:10px;padding:10px 12px;margin-bottom:12px;white-space:pre-wrap;word-break:break-word}
+
+/* kartlar */
+.grid{display:grid;gap:10px}
+.stats{grid-template-columns:repeat(2,1fr)}
+@media(min-width:640px){.stats{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:980px){.stats{grid-template-columns:repeat(6,1fr)}}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat .k{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.6px}
+.stat .v{font:700 26px/1.2 var(--mono);margin-top:4px}
+.stat .s{color:var(--mut);font-size:11px;margin-top:2px}
+.two{grid-template-columns:1fr}
+@media(min-width:900px){.two{grid-template-columns:1fr 1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:10px;min-width:0}
+.panel h3{margin:0 0 10px;font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.7px;font-weight:700;display:flex;justify-content:space-between;gap:8px}
+.panel h3 span{text-transform:none;letter-spacing:0;font-weight:400}
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--mut);font:10px var(--mono)}
+.chart .grid{stroke:var(--line);stroke-width:1}
+
+/* yatay çubuklar */
+.hb{display:grid;grid-template-columns:minmax(80px,38%) 1fr auto;gap:8px;align-items:center;margin:6px 0;font-size:13px}
+.hb .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb .bar{height:8px;background:var(--bg2);border-radius:4px;overflow:hidden}
+.hb .bar i{display:block;height:100%;background:var(--acc);border-radius:4px}
+.hb .c{font-family:var(--mono);color:var(--mut);font-size:12px}
+
+/* tablolar */
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+input,select{background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;min-width:0}
+input[type=search]{flex:1;min-width:140px}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+table{border-collapse:collapse;width:100%;min-width:560px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);font-weight:700;background:var(--bg2);position:sticky;top:0;cursor:default}
+tr:last-child td{border-bottom:0}
+tr.cl{cursor:pointer}
+tr.cl:hover td{background:rgba(255,255,255,.03)}
+td.num,th.num{text-align:right;font-family:var(--mono)}
+.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-size:11px;color:var(--mut)}
+.pill.g{color:var(--grn);border-color:#1f4a31}.pill.b{color:var(--blue);border-color:#1f3a5c}.pill.p{color:var(--pink);border-color:#5b2342}.pill.r{color:var(--red);border-color:#5b2323}
+.star{color:var(--yel)}
+.txt{max-width:420px;color:#c9d4df;word-break:break-word}
+.more{display:block;width:100%;margin-top:10px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px}
+
+/* çekmece */
+#drawer{position:fixed;inset:0;z-index:50;display:flex;justify-content:flex-end;background:rgba(0,0,0,.55)}
+#drawer .sheet{width:min(560px,100%);height:100%;overflow-y:auto;background:var(--bg);border-left:1px solid var(--line);padding:14px 16px 40px}
+#drawer h2{margin:4px 0 2px;font-size:18px}
+.rv{border-top:1px solid var(--line);padding:10px 0}
+.rv .h{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--mut)}
+.rv p{margin:4px 0 0;color:#c9d4df;word-break:break-word}
+.skel{height:96px;border-radius:12px;background:linear-gradient(90deg,var(--card),var(--bg2),var(--card));background-size:200% 100%;animation:sk 1.2s infinite}
+@keyframes sk{from{background-position:200% 0}to{background-position:-200% 0}}
+.empty{color:var(--mut);padding:18px;text-align:center}
+</style>
+</head>
+<body>
+
+<div id="login" class="hidden">
+  <div class="lbox">
+    <h1>Tadı <span style="color:var(--acc)">Nasıl?</span></h1>
+    <p>Yönetim paneli</p>
+    <button class="btn" id="btnLogin">Google ile giriş yap</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <div class="top">
+      <div class="logo">Tadı <b>Nasıl?</b> <span class="mono" style="color:var(--mut);font-weight:400">/ panel</span></div>
+      <div class="sp"></div>
+      <div class="who" id="who"></div>
+      <button class="ib" id="btnRefresh" title="Yenile">⟳</button>
+      <button class="ib" id="btnOut" title="Çıkış">⏻</button>
+    </div>
+    <div class="tabs" id="tabs">
+      <button class="tab on" data-t="overview">Genel</button>
+      <button class="tab" data-t="products">Ürünler</button>
+      <button class="tab" data-t="reviews">Yorumlar</button>
+      <button class="tab" data-t="accounts">Hesaplar</button>
+      <button class="tab" data-t="reports">Şikâyetler</button>
+    </div>
+  </header>
+  <main>
+    <div class="meta"><span class="dot"></span><span id="upd">yükleniyor…</span><span id="demoTag" class="pill p hidden">DEMO VERİSİ</span></div>
+    <div id="warn"></div>
+    <div id="view"><div class="grid stats"><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div>
+  </main>
+</div>
+
+<div id="drawer" class="hidden"><div class="sheet" id="sheet"></div></div>
+
+<script type="module">
+import cfg from './firebase-config.js';
+
+/* ─────────────  yardımcılar  ───────────── */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nf = n => (Number(n) || 0).toLocaleString('tr-TR');
+const f1 = n => (Number(n) || 0).toLocaleString('tr-TR', {minimumFractionDigits: 1, maximumFractionDigits: 1});
+const TR = 3 * 3600 * 1000;                          // Türkiye saati (UTC+3)
+const dayKey = d => new Date(d.getTime() + TR).toISOString().slice(0, 10);
+const monthKey = d => new Date(d.getTime() + TR).toISOString().slice(0, 7);
+const fmtDate = d => d ? d.toLocaleDateString('tr-TR', {day: '2-digit', month: '2-digit', year: 'numeric'}) : '—';
+const fmtDT = d => d ? d.toLocaleString('tr-TR', {day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit'}) : '—';
+const ago = d => {
+  if (!d) return '—';
+  const m = Math.round((Date.now() - d.getTime()) / 60000);
+  if (m < 1) return 'şimdi';
+  if (m < 60) return m + ' dk önce';
+  if (m < 1440) return Math.round(m / 60) + ' sa önce';
+  return Math.round(m / 1440) + ' gün önce';
+};
+const lastDays = n => {
+  const out = [];
+  for (let i = n - 1; i >= 0; i--) out.push(dayKey(new Date(Date.now() - i * 86400000)));
+  return out;
+};
+const ts = v => (v && typeof v.toDate === 'function') ? v.toDate() : (v instanceof Date ? v : null);
+const stars = r => `<span class="star">★</span> ${f1(r)}`;
+
+/* ─────────────  grafikler (saf SVG)  ───────────── */
+function lineChart(vals, labels, color = 'var(--acc)') {
+  const W = 640, H = 190, p = 30, n = vals.length, max = Math.max(1, ...vals);
+  const x = i => p + (W - 2 * p) * (n <= 1 ? 0 : i / (n - 1));
+  const y = v => H - 24 - (H - 24 - 12) * (v / max);
+  const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  let g = '';
+  (max >= 2 ? [0, .5, 1] : [0, 1]).forEach(t => {
+    const yy = y(max * t);
+    g += `<line class="grid" x1="${p}" x2="${W - p}" y1="${yy}" y2="${yy}"/><text x="${p - 6}" y="${yy + 3}" text-anchor="end">${Math.round(max * t)}</text>`;
+  });
+  let xl = '';
+  labels.forEach((l, i) => { if (i % Math.ceil(n / 6) === 0 || (i === n - 1 && i % Math.ceil(n / 6) > 2)) xl += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${esc(l.slice(5))}</text>`; });
+  const dots = vals.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="${n > 40 ? 0 : 2.6}" fill="${color}"><title>${esc(labels[i])}: ${v}</title></circle>`).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}">${g}
+    <polygon points="${x(0)},${y(0)} ${pts} ${x(n - 1)},${y(0)}" fill="${color}" opacity=".13"/>
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${dots}${xl}</svg>`;
+}
+function barChart(vals, labels, color = 'var(--teal)', fmt = v => v) {
+  const W = 640, H = 190, p = 30, n = vals.length, max = Math.max(1, ...vals);
+  const bw = (W - 2 * p) / n, y = v => H - 24 - (H - 24 - 12) * (v / max);
+  let g = '';
+  (max >= 2 ? [0, .5, 1] : [0, 1]).forEach(t => {
+    const yy = y(max * t);
+    g += `<line class="grid" x1="${p}" x2="${W - p}" y1="${yy}" y2="${yy}"/><text x="${p - 6}" y="${yy + 3}" text-anchor="end">${Math.round(max * t)}</text>`;
+  });
+  let bars = '', xl = '';
+  vals.forEach((v, i) => {
+    const h = y(0) - y(v);
+    bars += `<rect x="${p + i * bw + bw * .15}" y="${y(v)}" width="${bw * .7}" height="${Math.max(h, v ? 1.5 : 0)}" rx="2" fill="${color}"><title>${esc(labels[i])}: ${fmt(v)}</title></rect>`;
+    if (i % Math.ceil(n / 8) === 0 || (i === n - 1 && i % Math.ceil(n / 8) > 2)) xl += `<text x="${p + i * bw + bw / 2}" y="${H - 6}" text-anchor="middle">${esc(labels[i].length > 6 ? labels[i].slice(5) : labels[i])}</text>`;
+  });
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}">${g}${bars}${xl}</svg>`;
+}
+function hbars(items, color = 'var(--acc)') {
+  if (!items.length) return '<div class="empty">Veri yok</div>';
+  const max = Math.max(1, ...items.map(i => i.v));
+  return items.map(i => `<div class="hb"><div class="n" title="${esc(i.l)}">${esc(i.l)}</div>
+    <div class="bar"><i style="width:${(i.v / max * 100).toFixed(1)}%;background:${i.c || color}"></i></div><div class="c">${esc(i.t ?? nf(i.v))}</div></div>`).join('');
+}
+
+/* ─────────────  durum  ───────────── */
+let S = null;               // yüklü veri + hesaplanmış istatistikler
+let tab = 'overview';
+const lim = {products: 60, reviews: 60, accounts: 60};
+let fb = null;              // gerçek mod: {auth, db, FS}
+const DEMO = /[?&]demo/.test(location.search) || String(cfg.apiKey).startsWith('BURAYA');
+
+/* ─────────────  veri → istatistik  ───────────── */
+function compute(raw) {
+  const {products, reviews, accounts, reports, banned, dau, totals} = raw;
+  const pById = new Map(products.map(p => [String(p.id), p]));
+  const revByP = new Map(), revByU = new Map();
+  reviews.forEach(r => {
+    (revByP.get(String(r.pid)) || revByP.set(String(r.pid), []).get(String(r.pid))).push(r);
+    if (r.uid) (revByU.get(r.uid) || revByU.set(r.uid, []).get(r.uid)).push(r);
+  });
+  products.forEach(p => {
+    const rs = revByP.get(String(p.id)) || [];
+    p.n = rs.length;
+    p.avg = rs.length ? rs.reduce((s, r) => s + r.rating, 0) / rs.length : 0;
+    const pr = rs.map(r => r.price).filter(v => v > 0);
+    p.min = pr.length ? Math.min(...pr) : 0; p.max = pr.length ? Math.max(...pr) : 0;
+  });
+  accounts.forEach(a => { a.n = (revByU.get(a.uid) || []).length; });
+  const now = Date.now();
+  const act = d => accounts.filter(a => a.lastSeen && now - a.lastSeen.getTime() < d * 86400000).length;
+  const days30 = lastDays(30);
+  const cnt = (arr, key) => { const m = {}; arr.forEach(x => { const d = key(x); if (d) m[d] = (m[d] || 0) + 1; }); return m; };
+  const revDay = cnt(reviews, r => r.date && dayKey(r.date));
+  const prodDay = cnt(products, p => p.createdAt && dayKey(p.createdAt));
+  const accDay = cnt(accounts, a => a.createdAt && dayKey(a.createdAt));
+  const months = {};
+  const bump = (m, k) => { if (!m) return; (months[m] ||= {a: 0, p: 0, r: 0})[k]++; };
+  accounts.forEach(a => a.createdAt && bump(monthKey(a.createdAt), 'a'));
+  products.forEach(p => p.createdAt && bump(monthKey(p.createdAt), 'p'));
+  reviews.forEach(r => r.date && bump(monthKey(r.date), 'r'));
+  const dist = Array(10).fill(0);
+  reviews.forEach(r => { const i = Math.min(9, Math.max(0, Math.round(r.rating * 2) - 1)); dist[i]++; });
+  const top = (arr, key, n = 8) => {
+    const m = {}; arr.forEach(x => { const k = key(x); if (k) m[k] = (m[k] || 0) + 1; });
+    return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, n).map(([l, v]) => ({l, v}));
+  };
+  const provs = top(accounts, a => a.provider || 'bilinmiyor', 6);
+  const openRep = reports.length;
+  return {
+    ...raw, pById, revByP, revByU, days30, dau, totals,
+    k: {
+      accounts: totals.accounts ?? accounts.length, today: dau[dau.length - 1] ?? 0, d7: act(7), d30: act(30),
+      products: products.length, reviews: reviews.length,
+      avg: reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0,
+      reports: openRep, banned: banned.length, taste: totals.taste, pvotes: totals.pvotes,
+      photos: reviews.filter(r => r.photos > 0).length,
+    },
+    series: {
+      rev: days30.map(d => revDay[d] || 0), prod: days30.map(d => prodDay[d] || 0), acc: days30.map(d => accDay[d] || 0),
+    },
+    months: Object.entries(months).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 12),
+    dist,
+    topProducts: [...products].sort((a, b) => b.n - a.n).slice(0, 8),
+    topUsers: top(reviews, r => r.user || r.uid, 8),
+    cities: top(reviews, r => r.city, 8), markets: top(reviews, r => r.market, 8),
+    provs,
+  };
+}
+
+/* ─────────────  sekmeler  ───────────── */
+function viewOverview() {
+  const k = S.k;
+  const card = (kk, v, s = '') => `<div class="stat"><div class="k">${kk}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+  const sum = a => a.reduce((x, y) => x + y, 0);
+  const dist = S.dist.map((v, i) => ({l: f1((i + 1) / 2) + ' ★', v}));
+  return `
+  <div class="grid stats">
+    ${card('Toplam hesap', nf(k.accounts), 'kayıtlı kullanıcı')}
+    ${card('Bugün aktif', nf(k.today), 'tekil kullanıcı')}
+    ${card('7 gün aktif', nf(k.d7), 'son görülmeye göre')}
+    ${card('30 gün aktif', nf(k.d30), 'son görülmeye göre')}
+    ${card('Ürün', nf(k.products), 'son 30 gün: +' + nf(sum(S.series.prod)))}
+    ${card('Yorum', nf(k.reviews), 'son 30 gün: +' + nf(sum(S.series.rev)))}
+    ${card('Ort. puan', f1(k.avg), 'tüm yorumlar')}
+    ${card('Fotoğraflı yorum', nf(k.photos), k.reviews ? Math.round(k.photos / k.reviews * 100) + '% oran' : '')}
+    ${card('Ürün oyu', nf(k.pvotes), 'beğeni / beğenmeme')}
+    ${card('Zevk profili', nf(k.taste), 'izin veren kullanıcı')}
+    ${card('Şikâyet', nf(k.reports), 'bekleyen', )}
+    ${card('Askıdaki hesap', nf(k.banned), '')}
+  </div>
+  <div class="grid two">
+    <div class="panel"><h3>Günlük aktif kullanıcı <span>son 30 gün</span></h3>${lineChart(S.dau, S.days30, 'var(--acc)')}</div>
+    <div class="panel"><h3>Yeni hesap / gün <span>son 30 gün</span></h3>${barChart(S.series.acc, S.days30, 'var(--blue)')}</div>
+    <div class="panel"><h3>Yeni yorum / gün <span>son 30 gün</span></h3>${barChart(S.series.rev, S.days30, 'var(--teal)')}</div>
+    <div class="panel"><h3>Yeni ürün / gün <span>son 30 gün</span></h3>${barChart(S.series.prod, S.days30, 'var(--pink)')}</div>
+    <div class="panel"><h3>En çok yorumlanan ürünler</h3>${hbars(S.topProducts.map(p => ({l: p.name, v: p.n})))}</div>
+    <div class="panel"><h3>En aktif yorumcular</h3>${hbars(S.topUsers, 'var(--teal)')}</div>
+    <div class="panel"><h3>Puan dağılımı</h3>${barChart(S.dist, dist.map(d => d.l.replace(' ★', '')), 'var(--yel)')}</div>
+    <div class="panel"><h3>Giriş yöntemi</h3>${hbars(S.provs, 'var(--blue)')}</div>
+    <div class="panel"><h3>Şehirler <span>yorumlara göre</span></h3>${hbars(S.cities, 'var(--pink)')}</div>
+    <div class="panel"><h3>Marketler <span>yorumlara göre</span></h3>${hbars(S.markets, 'var(--grn)')}</div>
+  </div>
+  <div class="panel"><h3>Aylık özet</h3>
+    <div class="tw"><table><tr><th>Ay</th><th class="num">Yeni hesap</th><th class="num">Yeni ürün</th><th class="num">Yeni yorum</th></tr>
+    ${S.months.map(([m, v]) => `<tr><td class="mono">${m}</td><td class="num">${nf(v.a)}</td><td class="num">${nf(v.p)}</td><td class="num">${nf(v.r)}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">Veri yok</td></tr>'}
+    </table></div></div>`;
+}
+
+let pq = '', psort = 'n';
+function viewProducts() {
+  const q = pq.trim().toLowerCase();
+  let l = S.products.filter(p => !q || (p.name + ' ' + p.brand + ' ' + p.cats.join(' ')).toLowerCase().includes(q));
+  const by = {n: (a, b) => b.n - a.n, avg: (a, b) => b.avg - a.avg, new: (a, b) => (b.createdAt || 0) - (a.createdAt || 0), name: (a, b) => a.name.localeCompare(b.name, 'tr')};
+  l.sort(by[psort]);
+  const shown = l.slice(0, lim.products);
+  return `<div class="tools"><input type="search" id="pq" placeholder="Ürün, marka, kategori ara…" value="${esc(pq)}">
+    <select id="psort"><option value="n">Yorum sayısı</option><option value="avg">Puan</option><option value="new">En yeni</option><option value="name">Ada göre</option></select></div>
+    <div class="meta">${nf(l.length)} ürün</div>
+    <div class="tw"><table><tr><th>Ürün</th><th>Kategori</th><th class="num">Yorum</th><th class="num">Puan</th><th class="num">Fiyat</th><th>Eklenme</th></tr>
+    ${shown.map(p => `<tr class="cl" data-p="${esc(p.id)}"><td><b>${esc(p.name)}</b><br><span style="color:var(--mut)">${esc(p.brand)}</span></td>
+      <td>${p.cats.slice(0, 2).map(c => `<span class="pill">${esc(c)}</span>`).join(' ')}</td>
+      <td class="num">${nf(p.n)}</td><td class="num">${p.n ? stars(p.avg) : '—'}</td>
+      <td class="num">${p.max ? (p.min === p.max ? nf(p.min) + '₺' : nf(p.min) + '–' + nf(p.max) + '₺') : '—'}</td>
+      <td>${fmtDate(p.createdAt)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Sonuç yok</td></tr>'}
+    </table></div>${l.length > shown.length ? '<button class="more" id="moreP">Daha fazla göster</button>' : ''}`;
+}
+
+let rq = '', rfilter = 'all';
+function viewReviews() {
+  const q = rq.trim().toLowerCase();
+  let l = S.reviews.filter(r => {
+    if (rfilter === 'low' && r.rating >= 3) return false;
+    if (rfilter === 'high' && r.rating < 4) return false;
+    if (rfilter === 'photo' && !(r.photos > 0)) return false;
+    if (rfilter === 'rep' && !(r.reports > 0)) return false;
+    return !q || (r.text + ' ' + r.user + ' ' + (S.pById.get(String(r.pid))?.name || '') + ' ' + r.city + ' ' + r.market).toLowerCase().includes(q);
+  }).sort((a, b) => (b.date || 0) - (a.date || 0));
+  const shown = l.slice(0, lim.reviews);
+  return `<div class="tools"><input type="search" id="rq" placeholder="Yorum, kullanıcı, ürün ara…" value="${esc(rq)}">
+    <select id="rf"><option value="all">Hepsi</option><option value="high">4★ ve üstü</option><option value="low">3★ altı</option><option value="photo">Fotoğraflı</option><option value="rep">Şikâyetli</option></select></div>
+    <div class="meta">${nf(l.length)} yorum</div>
+    <div class="tw"><table><tr><th>Tarih</th><th>Kullanıcı</th><th>Ürün</th><th class="num">Puan</th><th class="num">Fiyat</th><th>Yorum</th></tr>
+    ${shown.map(r => `<tr><td class="mono" style="white-space:nowrap">${fmtDT(r.date)}</td><td>${esc(r.user)}<br><span style="color:var(--mut);font-size:11px">${esc(r.city)}</span></td>
+      <td>${esc(S.pById.get(String(r.pid))?.name || '#' + r.pid)}<br><span style="color:var(--mut);font-size:11px">${esc(r.market)}</span></td>
+      <td class="num">${stars(r.rating)}</td><td class="num">${r.price > 0 ? nf(r.price) + '₺' : '—'}</td>
+      <td class="txt">${esc(r.text)}${r.photos ? ` <span class="pill b">📷 ${r.photos}</span>` : ''}${r.reports ? ` <span class="pill r">⚑ ${r.reports}</span>` : ''}${(r.up || r.down) ? ` <span class="pill">👍${r.up} 👎${r.down}</span>` : ''}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Sonuç yok</td></tr>'}
+    </table></div>${l.length > shown.length ? '<button class="more" id="moreR">Daha fazla göster</button>' : ''}`;
+}
+
+let aq = '';
+function viewAccounts() {
+  const q = aq.trim().toLowerCase();
+  const l = S.accounts.filter(a => !q || (a.name + ' ' + a.provider).toLowerCase().includes(q));
+  const shown = l.slice(0, lim.accounts);
+  const bannedSet = new Set(S.banned.map(b => b.id));
+  const pc = {google: 'b', 'e-posta': 'g', telefon: 'p'};
+  return `<div class="tools"><input type="search" id="aq" placeholder="Kullanıcı ara…" value="${esc(aq)}"></div>
+    <div class="meta">${nf(l.length)} hesap gösteriliyor (son görülmeye göre, en fazla ${nf(S.accounts.length)})</div>
+    <div class="tw"><table><tr><th>Kullanıcı</th><th>Yöntem</th><th>Kayıt</th><th>Son görülme</th><th class="num">Aktif gün</th><th class="num">Yorum</th></tr>
+    ${shown.map(a => `<tr class="cl" data-a="${esc(a.uid)}"><td><b>${esc(a.name)}</b>${bannedSet.has(a.uid) ? ' <span class="pill r">askıda</span>' : ''}</td>
+      <td><span class="pill ${pc[a.provider] || ''}">${esc(a.provider || '—')}</span></td><td>${fmtDate(a.createdAt)}</td>
+      <td title="${fmtDT(a.lastSeen)}">${ago(a.lastSeen)}</td><td class="num">${nf(a.days.length)}</td><td class="num">${nf(a.n)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Sonuç yok</td></tr>'}
+    </table></div>${l.length > shown.length ? '<button class="more" id="moreA">Daha fazla göster</button>' : ''}`;
+}
+
+function viewReports() {
+  const l = [...S.reports].sort((a, b) => (b.time || 0) - (a.time || 0));
+  return `<div class="meta">${nf(l.length)} bekleyen şikâyet</div>
+    <div class="tw"><table><tr><th>Tarih</th><th>Şikâyet eden</th><th>Ürün / yorumcu</th><th>Neden</th><th>Yorum</th></tr>
+    ${l.map(r => `<tr><td class="mono" style="white-space:nowrap">${fmtDT(r.time)}</td><td>${esc(r.reporter)}</td>
+      <td>${esc(r.productName)}<br><span style="color:var(--mut);font-size:11px">${esc(r.reviewer)}</span></td>
+      <td><span class="pill r">${esc(r.reason)}</span></td><td class="txt">${esc(r.excerpt)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Bekleyen şikâyet yok 🎉</td></tr>'}
+    </table></div>
+    <div class="panel"><h3>Askıya alınan hesaplar</h3>
+    ${S.banned.map(b => `<div class="rv" style="border:0;padding:4px 0"><b>${esc(b.name)}</b> <span class="pill">${fmtDate(b.time)}</span> <span style="color:var(--mut)">${esc(b.reason)}</span></div>`).join('') || '<div class="empty">Yok</div>'}</div>
+    <div class="meta" style="margin-top:12px">Bu panel salt okunurdur. Yorum silme, uyarı ve hesap askıya alma işlemleri uygulamadaki yönetici menüsünden yapılır.</div>`;
+}
+
+function render() {
+  if (!S) return;
+  const v = {overview: viewOverview, products: viewProducts, reviews: viewReviews, accounts: viewAccounts, reports: viewReports}[tab];
+  $('#view').innerHTML = v();
+  const bind = (id, ev, fn) => { const e = $(id); if (e) e.addEventListener(ev, fn); };
+  bind('#pq', 'input', e => { pq = e.target.value; lim.products = 60; keepFocus(render, '#pq'); });
+  bind('#psort', 'change', e => { psort = e.target.value; render(); }); if ($('#psort')) $('#psort').value = psort;
+  bind('#rq', 'input', e => { rq = e.target.value; lim.reviews = 60; keepFocus(render, '#rq'); });
+  bind('#rf', 'change', e => { rfilter = e.target.value; render(); }); if ($('#rf')) $('#rf').value = rfilter;
+  bind('#aq', 'input', e => { aq = e.target.value; lim.accounts = 60; keepFocus(render, '#aq'); });
+  bind('#moreP', 'click', () => { lim.products += 100; render(); });
+  bind('#moreR', 'click', () => { lim.reviews += 100; render(); });
+  bind('#moreA', 'click', () => { lim.accounts += 100; render(); });
+  document.querySelectorAll('tr[data-p]').forEach(tr => tr.addEventListener('click', () => openProduct(tr.dataset.p)));
+  document.querySelectorAll('tr[data-a]').forEach(tr => tr.addEventListener('click', () => openAccount(tr.dataset.a)));
+}
+function keepFocus(fn, sel) {
+  const el = $(sel), pos = el.selectionStart; fn();
+  const n = $(sel); n.focus(); try { n.setSelectionRange(pos, pos); } catch {}
+}
+
+/* ─────────────  çekmece  ───────────── */
+function openSheet(html) { $('#sheet').innerHTML = html; $('#drawer').classList.remove('hidden'); $('#sheet').scrollTop = 0; }
+$('#drawer').addEventListener('click', e => { if (e.target.id === 'drawer' || e.target.closest('[data-x]')) $('#drawer').classList.add('hidden'); });
+const revHtml = (r, showProduct) => `<div class="rv"><div class="h"><b style="color:var(--fg)">${esc(r.user)}</b> ${stars(r.rating)}
+  ${r.price > 0 ? `<span>${nf(r.price)}₺</span>` : ''}<span>${esc(r.market)}</span><span>${esc(r.city)}</span><span>${fmtDT(r.date)}</span>
+  ${showProduct ? `<span class="pill">${esc(S.pById.get(String(r.pid))?.name || '#' + r.pid)}</span>` : ''}
+  ${r.reports ? `<span class="pill r">⚑ ${r.reports}</span>` : ''}</div><p>${esc(r.text)}</p></div>`;
+function openProduct(id) {
+  const p = S.pById.get(String(id)); if (!p) return;
+  const rs = (S.revByP.get(String(id)) || []).sort((a, b) => (b.date || 0) - (a.date || 0));
+  const by = S.accounts.find(a => a.uid === p.createdBy);
+  openSheet(`<button class="ib" data-x>← Kapat</button><h2>${esc(p.name)}</h2>
+    <div style="color:var(--mut)">${esc(p.brand)} · ${p.cats.map(esc).join(', ')}</div>
+    <div class="grid stats" style="grid-template-columns:repeat(3,1fr);margin-top:12px">
+      <div class="stat"><div class="k">Yorum</div><div class="v">${nf(p.n)}</div></div>
+      <div class="stat"><div class="k">Puan</div><div class="v">${p.n ? f1(p.avg) : '—'}</div></div>
+      <div class="stat"><div class="k">Fiyat</div><div class="v" style="font-size:16px">${p.max ? nf(p.min) + '–' + nf(p.max) + '₺' : '—'}</div></div></div>
+    <div style="color:var(--mut);margin:10px 0;font-size:12px">Eklenme: ${fmtDT(p.createdAt)} · Ekleyen: ${esc(by ? by.name : (p.createdBy === 'sample' ? 'örnek veri' : p.createdBy === 'deleted' ? 'silinmiş kullanıcı' : p.createdBy || '—'))}${p.barcode ? ' · Barkod: ' + esc(p.barcode) : ''}</div>
+    ${rs.map(r => revHtml(r, false)).join('') || '<div class="empty">Henüz yorum yok</div>'}`);
+}
+function openAccount(uid) {
+  const a = S.accounts.find(x => x.uid === uid); if (!a) return;
+  const rs = (S.revByU.get(uid) || []).sort((x, y) => (y.date || 0) - (x.date || 0));
+  const mine = S.products.filter(p => p.createdBy === uid);
+  openSheet(`<button class="ib" data-x>← Kapat</button><h2>${esc(a.name)}</h2>
+    <div style="color:var(--mut)">${esc(a.provider)} · UID <span class="mono">${esc(uid.slice(0, 8))}…</span></div>
+    <div class="grid stats" style="grid-template-columns:repeat(3,1fr);margin-top:12px">
+      <div class="stat"><div class="k">Aktif gün</div><div class="v">${nf(a.days.length)}</div></div>
+      <div class="stat"><div class="k">Yorum</div><div class="v">${nf(rs.length)}</div></div>
+      <div class="stat"><div class="k">Ürün</div><div class="v">${nf(mine.length)}</div></div></div>
+    <div style="color:var(--mut);margin:10px 0;font-size:12px">Kayıt: ${fmtDT(a.createdAt)} · Son görülme: ${fmtDT(a.lastSeen)} (${ago(a.lastSeen)})</div>
+    ${mine.length ? `<h3 style="font-size:12px;color:var(--mut);text-transform:uppercase">Eklediği ürünler</h3>${mine.map(p => `<div class="rv"><b>${esc(p.name)}</b> <span class="pill">${nf(p.n)} yorum</span></div>`).join('')}` : ''}
+    <h3 style="font-size:12px;color:var(--mut);text-transform:uppercase;margin-top:16px">Yorumları</h3>
+    ${rs.map(r => revHtml(r, true)).join('') || '<div class="empty">Yorum yok</div>'}`);
+}
+
+/* ─────────────  veri kaynakları  ───────────── */
+function demoData() {
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const pick = a => a[Math.floor(rnd() * a.length)];
+  const names = ['Ayşe K.', 'Mehmet', 'Elif D.', 'Can Y.', 'Zeynep', 'Burak T.', 'Selin', 'Emre A.', 'Deniz', 'Gizem', 'Oğuz', 'Merve', 'Kaan', 'Ece', 'Tolga', 'Naz', 'Berk', 'Aslı', 'Cem', 'İpek'];
+  const prods = [['Eti Burçak', 'Eti', ['Atıştırmalık']], ['Ülker Çikolatalı Gofret', 'Ülker', ['Çikolata']], ['Sütaş Süzme Yoğurt', 'Sütaş', ['Süt ürünleri']], ['Pınar Süt 1L', 'Pınar', ['Süt ürünleri']], ['Torku Banvit Piliç', 'Torku', ['Et']], ['Dimes Şeftali Suyu', 'Dimes', ['İçecek']], ['Namet Sucuk', 'Namet', ['Et']], ['Lipton Ice Tea', 'Lipton', ['İçecek']], ['Doğuş Çay', 'Doğuş', ['İçecek']], ['Tadelle Çikolata', 'Ülker', ['Çikolata']], ['Çaykur Rize Çayı', 'Çaykur', ['İçecek']], ['Uno Ekmek', 'Uno', ['Fırın']], ['Banvit Nugget', 'Banvit', ['Dondurulmuş']], ['Peyman Fındık Ezmesi', 'Peyman', ['Kahvaltılık']], ['Eker Ayran', 'Eker', ['İçecek']]];
+  const markets = ['BİM', 'A101', 'ŞOK', 'Migros', 'CarrefourSA'], cities = ['İstanbul', 'Ankara', 'İzmir', 'Elazığ', 'Bursa', 'Antalya', 'Adana'];
+  const products = prods.map((p, i) => ({id: String(1000 + i), name: p[0], brand: p[1], cats: p[2], createdAt: new Date(Date.now() - rnd() * 40 * 86400000), createdBy: 'u' + (i % 12), barcode: '86900' + (10000 + i)}));
+  const accounts = Array.from({length: 74}, (_, i) => ({uid: 'u' + i, name: names[i % names.length] + (i >= names.length ? ' ' + (i + 1) : ''), provider: pick(['google', 'google', 'e-posta', 'telefon']),
+    createdAt: new Date(Date.now() - rnd() * 45 * 86400000), lastSeen: new Date(Date.now() - rnd() * rnd() * 20 * 86400000), days: Array.from({length: 1 + Math.floor(rnd() * 14)}, (_, j) => String(j))}));
+  const reviews = Array.from({length: 320}, (_, i) => {
+    const a = pick(accounts), p = pick(products);
+    return {id: 'r' + i, pid: p.id, uid: a.uid, user: a.name, rating: 1 + Math.floor(rnd() * 9) / 2 + (rnd() > .55 ? 0.5 : 0), price: Math.round(20 + rnd() * 80), market: pick(markets), city: pick(cities),
+      text: pick(['Çok lezzetli, tekrar alırım.', 'Fiyatına göre idare eder.', 'Tadı beklediğim gibi değildi.', 'Aile boyu aldık, çocuklar bayıldı!', 'Biraz tuzlu ama fena değil.', 'Fiyat performans ürünü.', 'Bir daha almam.', 'Market indiriminde aldım, güzel.']),
+      date: new Date(Date.now() - Math.pow(rnd(), 1.6) * 40 * 86400000), photos: rnd() > .8 ? 1 : 0, reports: rnd() > .96 ? 1 : 0, up: Math.floor(rnd() * 9), down: Math.floor(rnd() * 3)};
+  });
+  const dau = Array.from({length: 30}, (_, i) => Math.round(8 + i * 0.9 + rnd() * 10));
+  const reports = [{id: 'x1', reporter: 'Selin', productName: 'Eti Burçak', reviewer: 'Cem', reason: 'Spam / reklam', excerpt: 'En ucuz bu sitede, linke tıkla…', time: new Date(Date.now() - 3600e3 * 5)}, {id: 'x2', reporter: 'Kaan', productName: 'Namet Sucuk', reviewer: 'Oğuz', reason: 'Küfür / hakaret', excerpt: '(uygunsuz içerik)', time: new Date(Date.now() - 3600e3 * 30)}];
+  return {products, reviews, accounts, reports, banned: [{id: 'u9', name: 'Tolga', reason: 'Spam', time: new Date(Date.now() - 86400e3 * 3)}], dau, totals: {accounts: 74, taste: 21, pvotes: 640}};
+}
+
+async function loadReal() {
+  const {db, FS} = fb;
+  const {collection, collectionGroup, getDocs, query, orderBy, limit, getCountFromServer} = FS;
+  const cnt = async q => { try { return (await getCountFromServer(q)).data().count; } catch { return 0; } };
+  const [pS, rS, aS, repS, banS] = await Promise.all([
+    getDocs(collection(db, 'products')),
+    getDocs(collectionGroup(db, 'reviews')),
+    getDocs(query(collection(db, 'accounts'), orderBy('lastSeen', 'desc'), limit(1000))).catch(e => { warnAdd('Hesaplar okunamadı: ' + e.message); return {docs: []}; }),
+    getDocs(collection(db, 'reports')).catch(() => ({docs: []})),
+    getDocs(collection(db, 'banned')).catch(() => ({docs: []})),
+  ]);
+  const days = lastDays(30);
+  const [dau, accTotal, taste, pvotes] = await Promise.all([
+    Promise.all(days.map(d => cnt(collection(db, 'dailyActive', d, 'active')))),
+    cnt(collection(db, 'accounts')), cnt(collection(db, 'tasteProfiles')), cnt(collectionGroup(db, 'pvotes')),
+  ]);
+  return {
+    products: pS.docs.map(d => {const m = d.data(); return {id: d.id, name: m.name || '', brand: m.brand || '', cats: m.categories || [], createdAt: ts(m.createdAt), createdBy: m.createdBy || '', barcode: m.barcode || ''};}),
+    reviews: rS.docs.map(d => {const m = d.data(), v = Object.values(m.votes || {}); return {id: d.id, pid: m.productId, uid: m.uid || '', user: m.user || '', rating: Number(m.rating) || 0, price: Number(m.price) || 0,
+      market: m.market || '', city: m.city || '', text: m.text || '', date: ts(m.createdAt) || ts(m.date), photos: Number(m.photos) || 0, reports: (m.reports || []).length,
+      up: v.filter(x => x === 1).length, down: v.filter(x => x === -1).length};}),
+    accounts: aS.docs.map(d => {const m = d.data(); return {uid: d.id, name: m.name || '', provider: m.provider || '', createdAt: ts(m.createdAt), lastSeen: ts(m.lastSeen), days: m.days || []};}),
+    reports: repS.docs.map(d => {const m = d.data(); return {id: d.id, reporter: m.reporter || '', productName: m.productName || '', reviewer: m.reviewer || '', reason: m.reason || '', excerpt: m.excerpt || '', time: ts(m.time)};}),
+    banned: banS.docs.map(d => {const m = d.data(); return {id: d.id, name: m.name || '', reason: m.reason || '', time: ts(m.time)};}),
+    dau, totals: {accounts: accTotal, taste, pvotes},
+  };
+}
+
+const warnAdd = t => { $('#warn').innerHTML += `<div class="warn">${esc(t)}</div>`; };
+async function refresh() {
+  $('#warn').innerHTML = '';
+  $('#btnRefresh').disabled = true; $('#upd').textContent = 'yükleniyor…';
+  try {
+    const raw = DEMO ? demoData() : await loadReal();
+    S = compute(raw);
+    $('#upd').textContent = 'güncellendi: ' + new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+    render();
+  } catch (e) {
+    $('#upd').textContent = 'hata';
+    const m = String(e.message || e);
+    warnAdd('Veri okunamadı: ' + m + (/permission/i.test(m) ? '\n\nFirestore kurallarında yeni "accounts" ve "dailyActive" bölümlerinin yayınlandığından ve hesabının admins koleksiyonunda olduğundan emin ol.' : ''));
+  }
+  $('#btnRefresh').disabled = false;
+}
+
+/* ─────────────  başlangıç  ───────────── */
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+  tab = b.dataset.t; document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b)); render(); window.scrollTo(0, 0);
+}));
+$('#btnRefresh').addEventListener('click', refresh);
+setInterval(() => { if (S && document.visibilityState === 'visible' && !$('#app').classList.contains('hidden')) refresh(); }, 5 * 60 * 1000);
+
+function showApp(name) {
+  $('#login').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#who').textContent = name || '';
+  $('#demoTag').classList.toggle('hidden', !DEMO); refresh();
+}
+function showLogin(msg) {
+  $('#app').classList.add('hidden'); $('#login').classList.remove('hidden'); $('#loginErr').textContent = msg || '';
+}
+
+if (DEMO) {
+  $('#btnOut').addEventListener('click', () => location.reload());
+  showApp('demo');
+} else {
+  const V = '10.14.1', base = `https://www.gstatic.com/firebasejs/${V}/`;
+  const [A, AU, FS] = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-auth.js'), import(base + 'firebase-firestore.js')]);
+  const app = A.initializeApp(cfg), auth = AU.getAuth(app), db = FS.getFirestore(app);
+  fb = {auth, db, FS};
+  $('#btnOut').addEventListener('click', () => AU.signOut(auth));
+  $('#btnLogin').addEventListener('click', async () => {
+    $('#loginErr').textContent = '';
+    try { await AU.signInWithPopup(auth, new AU.GoogleAuthProvider()); }
+    catch (e) { $('#loginErr').textContent = 'Giriş yapılamadı: ' + (e.code || e.message); }
+  });
+  AU.onAuthStateChanged(auth, async u => {
+    if (!u) { showLogin(); return; }
+    try {
+      const ad = await FS.getDoc(FS.doc(db, 'admins', u.uid));
+      if (!ad.exists()) { await AU.signOut(auth); showLogin('Bu hesap yönetici değil: ' + (u.email || u.uid)); return; }
+      showApp(u.displayName || u.email);
+    } catch (e) { await AU.signOut(auth); showLogin('Yetki kontrolü yapılamadı: ' + (e.code || e.message)); }
+  });
+}
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
