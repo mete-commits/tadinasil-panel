@@ -24,7 +24,7 @@ a{color:var(--teal)}
 .mono{font-family:var(--mono)}
 
 /* giriş */
-#login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+#login,#gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
 .lbox{width:100%;max-width:380px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center}
 .lbox h1{margin:0 0 4px;font-size:22px}
 .lbox p{margin:0 0 20px;color:var(--mut)}
@@ -43,6 +43,7 @@ header{position:sticky;top:0;z-index:20;background:rgba(11,15,20,.92);backdrop-f
 .ib{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 .bd{background:var(--red,#e5484d);color:#fff;border-radius:9px;padding:0 6px;margin-left:5px;font-size:11px;font-weight:700}
 .now{display:flex;gap:18px;align-items:center;flex-wrap:wrap}.nowv{display:flex;gap:10px;align-items:center}.nowv b{font-size:34px;line-height:1}.nowv span{color:var(--mut);font-size:12px}.nowv i{font-style:normal;opacity:.7}.nowv .dot{width:10px;height:10px;border-radius:50%;background:var(--grn);animation:pl 1.6s infinite}@keyframes pl{50%{opacity:.3}}.nowl{display:grid;gap:4px;font-size:13px}.nowl span{color:var(--mut);font-size:12px}
+.risk{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:rgba(229,72,77,.12);border:1px solid rgba(229,72,77,.5);border-radius:12px;padding:12px 14px;margin-bottom:12px}
 .tabs{display:flex;gap:2px;overflow-x:auto;padding:0 10px;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
 .tab{background:none;border:0;border-bottom:2px solid transparent;padding:9px 12px;color:var(--mut);white-space:nowrap;font-weight:600}
@@ -127,10 +128,20 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 </head>
 <body>
 
+<div id="gate" class="hidden">
+  <div class="lbox">
+    <h1>Tadı <span style="color:var(--acc)">Nasıl?</span></h1>
+    <p>Erişim kodu</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 7</div>
+    <input id="gc" type="password" placeholder="Kodu yaz" autocomplete="off" style="width:100%;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg2,#0f141b);color:var(--fg);font:inherit">
+    <button class="btn" id="gb" style="width:100%">Devam</button>
+    <div class="err" id="gerr"></div>
+  </div>
+</div>
+
 <div id="login" class="hidden">
   <div class="lbox">
     <h1>Tadı <span style="color:var(--acc)">Nasıl?</span></h1>
-    <p>Yönetim paneli</p>
+    <p>Yönetim paneli</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 7</div>
     <button class="btn" id="btnLogin" style="width:100%">Google ile giriş yap</button>
     <div style="margin:16px 0 10px;color:var(--mut);font-size:12px">veya e-posta ile</div>
     <input id="em" type="email" placeholder="E-posta" autocomplete="username" style="width:100%;margin-bottom:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--fg);font:inherit">
@@ -156,6 +167,7 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
       <button class="tab" data-t="reviews">Yorumlar</button>
       <button class="tab" data-t="accounts">Hesaplar</button>
       <button class="tab" data-t="reports">Şikâyetler<span class="bd hidden" id="bdRep"></span></button>
+      <button class="tab" data-t="blocks">Engeller</button>
       <button class="tab" data-t="banned">Askıdakiler</button>
       <button class="tab" data-t="users">Kullanıcılar</button>
     </div>
@@ -243,13 +255,13 @@ function hbars(items, color = 'var(--acc)') {
 let S = null;               // yüklü veri + hesaplanmış istatistikler
 let tab = 'overview';
 const lim = {products: 60, reviews: 60, accounts: 60, users: 60};
-const HIDE_AT = 6;
+const HIDE_AT = 6, RISK_AT = 15;
 let fb = null;              // gerçek mod: {auth, db, FS}
 const DEMO = /[?&]demo/.test(location.search) || String(cfg.apiKey).startsWith('BURAYA');
 
 /* ─────────────  veri → istatistik  ───────────── */
 function compute(raw) {
-  const {products, reviews, accounts, reports, banned, dau, totals} = raw;
+  const {products, reviews, accounts, reports, banned, dau, totals} = raw; const blocks = raw.blocks || [];
   const pById = new Map(products.map(p => [String(p.id), p]));
   const revByP = new Map(), revByU = new Map();
   reviews.forEach(r => {
@@ -284,8 +296,11 @@ function compute(raw) {
   };
   const provs = top(accounts, a => a.provider || 'bilinmiyor', 6);
   const openRep = reports.length;
+  const bm = new Map();
+  blocks.forEach(b => { const k = b.blockedUid; if (!k) return; const g = bm.get(k) || bm.set(k, {uid: k, name: b.blockedName, list: []}).get(k); g.list.push(b); if (b.blockedName) g.name = b.blockedName; });
+  const blockGroups = [...bm.values()].map(g => ({...g, n: new Set(g.list.map(x => x.blockerUid)).size, list: g.list.sort((x, y) => (y.time || 0) - (x.time || 0))})).sort((a, b) => b.n - a.n || (b.list[0].time || 0) - (a.list[0].time || 0));
   return {
-    ...raw, pById, revByP, revByU, days30, dau, totals,
+    ...raw, blocks, blockGroups, pById, revByP, revByU, days30, dau, totals,
     k: {
       accounts: totals.accounts ?? accounts.length, today: dau[dau.length - 1] ?? 0, d7: act(7), d30: act(30),
       products: products.length, reviews: reviews.length,
@@ -306,6 +321,7 @@ function compute(raw) {
 }
 
 /* ─────────────  sekmeler  ───────────── */
+const riskDis = () => { try { return JSON.parse(store.get('tp_risk_dis') || '[]'); } catch { return []; } };
 function viewOverview() {
   const k = S.k;
   const card = (kk, v, s = '') => `<div class="stat"><div class="k">${kk}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
@@ -315,7 +331,12 @@ function viewOverview() {
   const online = S.accounts.filter(a => a.lastSeen && now - a.lastSeen.getTime() < 5 * 60000).length;
   const rD = S.reviews.filter(r => sameDay(r.date)).length, rH = S.reviews.filter(r => sameHour(r.date)).length;
   const pD = S.products.filter(p => sameDay(p.createdAt)).length, pH = S.products.filter(p => sameHour(p.createdAt)).length;
-  return `
+  const dis = riskDis();
+  const risky = S.blockGroups.filter(g => g.n >= RISK_AT && !dis.includes(g.uid));
+  const bannedSetO = new Set(S.banned.map(b => b.id));
+  const riskHtml = risky.map(g => `<div class="risk"><div><b>⚠ Riskli kullanıcı: ${esc(g.name || g.uid.slice(0, 8))}</b>${bannedSetO.has(g.uid) ? ' <span class="pill r">askıda</span>' : ''}<br><span style="color:var(--mut);font-size:12px">${nf(g.n)} kişi tarafından engellendi</span></div>
+    <div class="acts" style="margin:0">${bannedSetO.has(g.uid) ? '' : `<button class="btn red sm" data-act="ban" data-uid="${esc(g.uid)}" data-name="${esc(g.name)}">Askıya al</button>`}<button class="btn ghost sm" data-act="seeblocks">Engelleyenler</button><button class="ib" data-act="riskx" data-uid="${esc(g.uid)}" title="Bildirimi kapat">✕</button></div></div>`).join('');
+  return `${riskHtml}
   <div class="panel now"><div class="nowv"><span class="dot"></span><b>${nf(online)}</b><span>şu an aktif<br><i>son 5 dk</i></span></div>
     <div class="nowl"><div><b>${nf(rH)}</b> yorum · <b>${nf(pH)}</b> ürün <span>bu saat (${String(d0.getHours()).padStart(2, '0')}:00 –)</span></div>
     <div><b>${nf(rD)}</b> yorum · <b>${nf(pD)}</b> ürün <span>bugün</span></div></div></div>
@@ -331,6 +352,7 @@ function viewOverview() {
     ${card('Zevk profili', nf(k.taste), 'izin veren kullanıcı')}
     ${card('Şikâyet', nf(k.reports), 'bekleyen', )}
     ${card('Askıdaki hesap', nf(k.banned), '')}
+    ${card('Engel kaydı', nf(S.blocks.length), nf(S.blockGroups.length) + ' kullanıcı engellendi')}
   </div>
   <div class="grid two">
     <div class="panel"><h3>Günlük aktif kullanıcı <span>son 30 gün</span></h3>${lineChart(S.dau, S.days30, 'var(--acc)')}</div>
@@ -441,6 +463,17 @@ function viewReports() {
     ${groups.map(card).join('') || '<div class="empty">Bekleyen şikâyet yok 🎉</div>'}`;
 }
 
+function viewBlocks() {
+  const bannedSet = new Set(S.banned.map(b => b.id));
+  const l = S.blockGroups;
+  return `<div class="meta">${nf(S.blocks.length)} engel kaydı · ${nf(l.length)} engellenen kullanıcı · ${RISK_AT}+ kişi engellerse Genel sayfada "riskli kullanıcı" olarak görünür</div>
+    ${l.map(g => `<div class="rep"><div class="t"><span class="pill ${g.n >= RISK_AT ? 'r' : ''}">${nf(g.n)} kişi engelledi</span>${bannedSet.has(g.uid) ? '<span class="pill r">askıda</span>' : ''}</div>
+      <div style="margin-top:6px"><b>${esc(g.name || g.uid.slice(0, 8))}</b></div>
+      <details style="margin-top:8px"><summary style="cursor:pointer;color:var(--acc)">Kim engelledi? (${g.list.length})</summary>
+        ${g.list.map(x => `<div class="rv" style="padding:6px 0"><b style="color:var(--fg)">${esc(x.blockerName || 'bilinmiyor')}</b> <span class="mono" style="color:var(--mut)">${fmtDT(x.time)}</span></div>`).join('')}</details>
+      <div class="acts">${bannedSet.has(g.uid) ? `<button class="btn ghost sm" data-act="unban" data-uid="${esc(g.uid)}">Banı kaldır</button>` : `<button class="btn red sm" data-act="ban" data-uid="${esc(g.uid)}" data-name="${esc(g.name)}">Askıya al</button>`}</div></div>`).join('') || '<div class="empty">Henüz engel kaydı yok</div>'}`;
+}
+
 function viewBanned() {
   const accBy = new Map(S.accounts.map(a => [a.uid, a]));
   const l = [...S.banned].sort((a, b) => (b.time || 0) - (a.time || 0));
@@ -469,7 +502,7 @@ function viewUsers() {
 
 function render() {
   if (!S) return;
-  const v = {overview: viewOverview, products: viewProducts, reviews: viewReviews, accounts: viewAccounts, reports: viewReports, banned: viewBanned, users: viewUsers}[tab];
+  const v = {overview: viewOverview, products: viewProducts, reviews: viewReviews, accounts: viewAccounts, reports: viewReports, banned: viewBanned, users: viewUsers, blocks: viewBlocks}[tab];
   const nb = groupReports().length; const bd = $('#bdRep'); bd.textContent = nb; bd.classList.toggle('hidden', !nb);
   $('#view').innerHTML = v();
   const bind = (id, ev, fn) => { const e = $(id); if (e) e.addEventListener(ev, fn); };
@@ -500,6 +533,8 @@ document.addEventListener('click', async e => {
   if (act === 'aipaste') { const r = await ask({title: 'AI yanıtını yapıştır', body: 'Promptu bir yapay zekaya yapıştırıp verdiği JSON yanıtını buraya yapıştır.', input: '{"results":[…]}', textarea: true, ok: 'Uygula'}); if (r.ok) { try { toast(parseAI(r.value) + ' şikâyet işlendi'); render(); } catch (x) { warnSet('ai', 'Yanıt okunamadı: ' + x.message); setTimeout(() => warnSet('ai'), 8000); } } return; }
   if (act === 'unban') { const r = await ask({title: 'Banı kaldır', body: 'Bu hesap yeniden giriş yapabilecek.', ok: 'Banı kaldır'}); if (r.ok) run(() => A.unban(d.uid), 'Ban kaldırıldı'); return; }
   if (act === 'ban') { const r = await ask({title: `“${d.name}” askıya alınsın mı?`, body: 'Kullanıcı çıkış yaptırılır ve giriş yapamaz. İsteğe bağlı bir not yazarsan kullanıcıya bildirim gider, boş bırakırsan gitmez.', input: 'Neden? (isteğe bağlı)', ok: 'Askıya al', danger: true}); if (r.ok) run(async () => { await A.ban(d.uid, d.name, r.value); $('#drawer').classList.add('hidden'); }, 'Hesap askıya alındı'); return; }
+  if (act === 'riskx') { const a = riskDis(); a.push(d.uid); store.set('tp_risk_dis', JSON.stringify(a)); render(); return; }
+  if (act === 'seeblocks') { tab = 'blocks'; document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.t === 'blocks')); render(); window.scrollTo(0, 0); return; }
   if (act === 'dismiss') { const rep = S.reports.find(x => x.id === d.id); const ids = S.reports.filter(x => rep && (x.reviewId || x.id) === (rep.reviewId || rep.id)).map(x => x.id); run(async () => { for (const i of ids) await A.dismiss(i); }, 'Şikâyetler kapatıldı'); return; }
   if (act === 'repdel') {
     const rep = S.reports.find(x => x.id === d.id), rv = rep && S.reviews.find(x => x.id === rep.reviewId); if (!rep || !rv) return;
@@ -582,7 +617,9 @@ function demoData() {
   const mk = (rv, n, off) => { for (let k = 0; k < n; k++) { const ra = accounts[(off + k) % accounts.length]; reports.push({id: 'x' + reports.length, reporter: ra.name, reporterUid: ra.uid, reviewId: rv.id, productId: rv.pid, productName: products.find(p => p.id === rv.pid).name, reviewer: rv.user, reviewerUid: rv.uid, reason: reasons[(off + k) % reasons.length], excerpt: rv.text, time: new Date(Date.now() - 3600e3 * (2 + k * 3 + off))}); } };
   mk(reviews[12], 7, 20); mk(reviews[40], 2, 3); mk(reviews[77], 1, 9);
   reviews[12].reports = 7; reviews[40].reports = 2; reviews[77].reports = 1;
-  return {products, reviews, accounts, reports, banned: [{id: 'u9', name: accounts[9].name, reason: 'Spam', time: new Date(Date.now() - 86400e3 * 3)}, {id: 'u14', name: accounts[14].name, reason: '', time: new Date(Date.now() - 86400e3 * 8)}], dau, totals: {accounts: 74, taste: 21, pvotes: 640}};
+  const blocks = []; const bk = (to, n, off) => { for (let k = 0; k < n; k++) { const a = accounts[(off + k) % accounts.length]; blocks.push({id: 'b' + blocks.length, blockerUid: a.uid, blockerName: a.name, blockedUid: accounts[to].uid, blockedName: accounts[to].name, time: new Date(Date.now() - 3600e3 * (k * 5 + to))}); } };
+  bk(3, 16, 20); bk(7, 4, 30); bk(11, 2, 50);
+  return {blocks, products, reviews, accounts, reports, banned: [{id: 'u9', name: accounts[9].name, reason: 'Spam', time: new Date(Date.now() - 86400e3 * 3)}, {id: 'u14', name: accounts[14].name, reason: '', time: new Date(Date.now() - 86400e3 * 8)}], dau, totals: {accounts: 74, taste: 21, pvotes: 640}};
 }
 
 /* ── gerçek mod: canlı (onSnapshot) dinleme ── */
@@ -592,9 +629,10 @@ const mapReview = d => {const m = d.data(), v = Object.values(m.votes || {}); re
   up: v.filter(x => x === 1).length, down: v.filter(x => x === -1).length};};
 const mapAccount = d => {const m = d.data(); return {uid: d.id, name: m.name || '', provider: m.provider || '', email: m.email || '', phone: m.phone || '', createdAt: ts(m.createdAt), lastSeen: ts(m.lastSeen), days: m.days || []};};
 const mapReport = d => {const m = d.data(); return {id: d.id, reporter: m.reporter || '', reporterUid: m.reporterUid || '', reviewId: m.reviewId || '', productId: m.productId, productName: m.productName || '', reviewer: m.reviewer || '', reviewerUid: m.reviewerUid || '', reason: m.reason || '', excerpt: m.excerpt || '', time: ts(m.time)};};
+const mapBlock = d => {const m = d.data(); return {id: d.id, blockerUid: m.blockerUid || '', blockerName: m.blockerName || '', blockedUid: m.blockedUid || '', blockedName: m.blockedName || '', time: ts(m.time)};};
 const mapBanned = d => {const m = d.data(); return {id: d.id, name: m.name || '', reason: m.reason || '', time: ts(m.time)};};
 
-const raw = {products: [], reviews: [], accounts: [], reports: [], banned: [], taste: 0, pvotes: 0};
+const raw = {products: [], reviews: [], accounts: [], reports: [], banned: [], blocks: [], taste: 0, pvotes: 0};
 let demoRaw = null, subs = [], countT = null, recT = null, lastUpd = null, liveOk = true;
 const HINT = '\n\nFirestore kurallarının son sürümünün yayınlandığından ve hesabının admins koleksiyonunda olduğundan emin ol.';
 const warns = {};
@@ -635,6 +673,7 @@ function startLive() {
   sub(query(collection(db, 'accounts'), orderBy('lastSeen', 'desc'), limit(2000)), 'accounts', mapAccount, 'Hesaplar');
   sub(collection(db, 'reports'), 'reports', mapReport, 'Şikâyetler');
   sub(collection(db, 'banned'), 'banned', mapBanned, 'Askıdaki hesaplar');
+  sub(collectionGroup(db, 'blocks'), 'blocks', mapBlock, 'Engeller');
   counts(); countT = setInterval(counts, 60000);
 }
 function stopLive() { subs.forEach(u => { try { u(); } catch {} }); subs = []; clearInterval(countT); S = null; }
@@ -775,6 +814,43 @@ function showLogin(msg) {
   $('#app').classList.add('hidden'); $('#login').classList.remove('hidden'); $('#loginErr').textContent = msg || '';
 }
 
+/* ── erişim kodu kapısı (sadece vitrin; asıl koruma giriş + Firestore kuralları) ── */
+const GATE_HASH = "f113a7d8a8d7ac572cf0faec5c652c6444cbc9fb631aeaaad9e609bea45295a7";
+const sha = async t => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map(b => b.toString(16).padStart(2, '0')).join('');
+async function gate() {
+  if (store.get('tp_gate') === GATE_HASH) return;
+  $('#gate').classList.remove('hidden');
+  await new Promise(res => {
+    const go = async () => {
+      const h = await sha($('#gc').value.trim().normalize('NFC'));
+      if (h === GATE_HASH) { store.set('tp_gate', h); res(); }
+      else { $('#gerr').textContent = 'Kod yanlış'; $('#gc').value = ''; await new Promise(r => setTimeout(r, 1200)); }
+    };
+    $('#gb').addEventListener('click', () => { if ($('#gc').value.trim()) go(); });
+    // gizli kısayol: yalnızca dokunmatik ekranda — düğmeye 5 kez art arda dokun, sonra en az 10 sn basılı tut
+    const gb = $('#gb'); let taps = 0, lastUp = 0, downAt = 0, armed = false, holdT = null;
+    gb.style.touchAction = 'none'; gb.style.userSelect = 'none'; gb.style.webkitUserSelect = 'none';
+    gb.addEventListener('contextmenu', e => e.preventDefault());
+    gb.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'touch') return;
+      downAt = Date.now();
+      if (armed) holdT = setTimeout(() => { holdT = null; res(); }, 10000);
+    });
+    const up = e => {
+      if (e.pointerType !== 'touch') return;
+      clearTimeout(holdT); holdT = null;
+      const now = Date.now();
+      if (armed) { armed = false; taps = 0; return; }
+      if (now - downAt < 600) { taps = (now - lastUp < 1500 || taps === 0) ? taps + 1 : 1; lastUp = now; if (taps >= 5) { armed = true; setTimeout(() => { armed = false; taps = 0; }, 5000); } }
+      else taps = 0;
+    };
+    gb.addEventListener('pointerup', up); gb.addEventListener('pointercancel', up);
+    $('#gc').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    $('#gc').focus();
+  });
+  $('#gate').classList.add('hidden');
+}
+if (!DEMO) await gate();
 if (DEMO) {
   $('#btnOut').addEventListener('click', () => location.reload());
   showApp('demo');
