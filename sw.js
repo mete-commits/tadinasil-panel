@@ -1,4 +1,4 @@
-const C = 'tadi-panel-v1';
+const C = 'tadi-panel-v3';
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(C).then(c => c.addAll(['./', './index.html', './firebase-config.js', './icon-192.png'])).catch(() => {}));
   self.skipWaiting();

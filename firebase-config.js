@@ -1,5 +1,4 @@
 // Firebase Console → Proje ayarları → Genel → Uygulamalarınız → Web uygulaması (</>)
-// oradaki "firebaseConfig" değerlerini aşağıya yapıştırın.
 export default {
   apiKey: "AIzaSyApeMAcy5adRda4AOkEJr2VhfZ61Y9NZhs",
   authDomain: "tadinasil-1e8c3.firebaseapp.com",
