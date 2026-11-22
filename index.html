@@ -41,6 +41,8 @@ header{position:sticky;top:0;z-index:20;background:rgba(11,15,20,.92);backdrop-f
 .sp{flex:1}
 .who{color:var(--mut);font-size:12px;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ib{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.bd{background:var(--red,#e5484d);color:#fff;border-radius:9px;padding:0 6px;margin-left:5px;font-size:11px;font-weight:700}
+.now{display:flex;gap:18px;align-items:center;flex-wrap:wrap}.nowv{display:flex;gap:10px;align-items:center}.nowv b{font-size:34px;line-height:1}.nowv span{color:var(--mut);font-size:12px}.nowv i{font-style:normal;opacity:.7}.nowv .dot{width:10px;height:10px;border-radius:50%;background:var(--grn);animation:pl 1.6s infinite}@keyframes pl{50%{opacity:.3}}.nowl{display:grid;gap:4px;font-size:13px}.nowl span{color:var(--mut);font-size:12px}
 .tabs{display:flex;gap:2px;overflow-x:auto;padding:0 10px;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
 .tab{background:none;border:0;border-bottom:2px solid transparent;padding:9px 12px;color:var(--mut);white-space:nowrap;font-weight:600}
@@ -144,7 +146,7 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
       <div class="logo">Tadı <b>Nasıl?</b> <span class="mono" style="color:var(--mut);font-weight:400">/ panel</span></div>
       <div class="sp"></div>
       <div class="who" id="who"></div>
-      <button class="ib" id="btnSet" title="Ayarlar (AI analizi)">⚙</button>
+      
       <button class="ib" id="btnRefresh" title="Yenile">⟳</button>
       <button class="ib" id="btnOut" title="Çıkış">⏻</button>
     </div>
@@ -153,7 +155,9 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
       <button class="tab" data-t="products">Ürünler</button>
       <button class="tab" data-t="reviews">Yorumlar</button>
       <button class="tab" data-t="accounts">Hesaplar</button>
-      <button class="tab" data-t="reports">Şikâyetler</button>
+      <button class="tab" data-t="reports">Şikâyetler<span class="bd hidden" id="bdRep"></span></button>
+      <button class="tab" data-t="banned">Askıdakiler</button>
+      <button class="tab" data-t="users">Kullanıcılar</button>
     </div>
   </header>
   <main>
@@ -238,7 +242,8 @@ function hbars(items, color = 'var(--acc)') {
 /* ─────────────  durum  ───────────── */
 let S = null;               // yüklü veri + hesaplanmış istatistikler
 let tab = 'overview';
-const lim = {products: 60, reviews: 60, accounts: 60};
+const lim = {products: 60, reviews: 60, accounts: 60, users: 60};
+const HIDE_AT = 6;
 let fb = null;              // gerçek mod: {auth, db, FS}
 const DEMO = /[?&]demo/.test(location.search) || String(cfg.apiKey).startsWith('BURAYA');
 
@@ -306,7 +311,14 @@ function viewOverview() {
   const card = (kk, v, s = '') => `<div class="stat"><div class="k">${kk}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
   const sum = a => a.reduce((x, y) => x + y, 0);
   const dist = S.dist.map((v, i) => ({l: f1((i + 1) / 2) + ' ★', v}));
+  const now = Date.now(), d0 = new Date(); const sameDay = t => t && t.toDateString() === d0.toDateString(), sameHour = t => sameDay(t) && t.getHours() === d0.getHours();
+  const online = S.accounts.filter(a => a.lastSeen && now - a.lastSeen.getTime() < 5 * 60000).length;
+  const rD = S.reviews.filter(r => sameDay(r.date)).length, rH = S.reviews.filter(r => sameHour(r.date)).length;
+  const pD = S.products.filter(p => sameDay(p.createdAt)).length, pH = S.products.filter(p => sameHour(p.createdAt)).length;
   return `
+  <div class="panel now"><div class="nowv"><span class="dot"></span><b>${nf(online)}</b><span>şu an aktif<br><i>son 5 dk</i></span></div>
+    <div class="nowl"><div><b>${nf(rH)}</b> yorum · <b>${nf(pH)}</b> ürün <span>bu saat (${String(d0.getHours()).padStart(2, '0')}:00 –)</span></div>
+    <div><b>${nf(rD)}</b> yorum · <b>${nf(pD)}</b> ürün <span>bugün</span></div></div></div>
   <div class="grid stats">
     ${card('Toplam hesap', nf(k.accounts), 'kayıtlı kullanıcı')}
     ${card('Bugün aktif', nf(k.today), 'tekil kullanıcı')}
@@ -314,7 +326,6 @@ function viewOverview() {
     ${card('30 gün aktif', nf(k.d30), 'son görülmeye göre')}
     ${card('Ürün', nf(k.products), 'son 30 gün: +' + nf(sum(S.series.prod)))}
     ${card('Yorum', nf(k.reviews), 'son 30 gün: +' + nf(sum(S.series.rev)))}
-    ${card('Ort. puan', f1(k.avg), 'tüm yorumlar')}
     ${card('Fotoğraflı yorum', nf(k.photos), k.reviews ? Math.round(k.photos / k.reviews * 100) + '% oran' : '')}
     ${card('Ürün oyu', nf(k.pvotes), 'beğeni / beğenmeme')}
     ${card('Zevk profili', nf(k.taste), 'izin veren kullanıcı')}
@@ -347,14 +358,14 @@ function viewProducts() {
   l.sort(by[psort]);
   const shown = l.slice(0, lim.products);
   return `<div class="tools"><input type="search" id="pq" placeholder="Ürün, marka, kategori ara…" value="${esc(pq)}">
-    <select id="psort"><option value="n">Yorum sayısı</option><option value="avg">Puan</option><option value="new">En yeni</option><option value="name">Ada göre</option></select></div>
+    <select id="psort"><option value="n">Yorum sayısı</option><option value="new">En yeni</option><option value="name">Ada göre</option></select></div>
     <div class="meta">${nf(l.length)} ürün</div>
-    <div class="tw"><table><tr><th>Ürün</th><th>Kategori</th><th class="num">Yorum</th><th class="num">Puan</th><th class="num">Fiyat</th><th>Eklenme</th></tr>
+    <div class="tw"><table><tr><th>Ürün</th><th>Kategori</th><th class="num">Yorum</th><th class="num">Fiyat</th><th>Eklenme</th><th></th></tr>
     ${shown.map(p => `<tr class="cl" data-p="${esc(p.id)}"><td><b>${esc(p.name)}</b><br><span style="color:var(--mut)">${esc(p.brand)}</span></td>
       <td>${p.cats.slice(0, 2).map(c => `<span class="pill">${esc(c)}</span>`).join(' ')}</td>
-      <td class="num">${nf(p.n)}</td><td class="num">${p.n ? stars(p.avg) : '—'}</td>
+      <td class="num">${nf(p.n)}</td>
       <td class="num">${p.max ? (p.min === p.max ? nf(p.min) + '₺' : nf(p.min) + '–' + nf(p.max) + '₺') : '—'}</td>
-      <td>${fmtDate(p.createdAt)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Sonuç yok</td></tr>'}
+      <td>${fmtDate(p.createdAt)}</td><td><button class="btn red sm" data-act="delprod" data-pid="${esc(p.id)}" title="Ürünü sil">🗑</button></td></tr>`).join('') || '<tr><td colspan="7" class="empty">Sonuç yok</td></tr>'}
     </table></div>${l.length > shown.length ? '<button class="more" id="moreP">Daha fazla göster</button>' : ''}`;
 }
 
@@ -398,37 +409,68 @@ function viewAccounts() {
 
 const verdictCls = {ihlal: 'bad', uygun: 'ok', belirsiz: ''};
 const actLabel = {yorumu_kaldir: 'Yorumu kaldır', yoksay: 'Şikâyeti yoksay', uyar_ve_kaldir: 'Yorumu kaldır + uyarı notu', banla: 'Kullanıcıyı askıya al', insan_incelesin: 'Elle incele'};
+function groupReports() {
+  const m = new Map();
+  S.reports.forEach(r => { const k = r.reviewId || r.id; (m.get(k) || m.set(k, []).get(k)).push(r); });
+  return [...m.values()].map(g => g.sort((x, y) => (y.time || 0) - (x.time || 0))).sort((x, y) => (y[0].time || 0) - (x[0].time || 0));
+}
 function viewReports() {
-  const l = [...S.reports].sort((a, b) => (b.time || 0) - (a.time || 0));
+  const groups = groupReports();
   const bannedSet = new Set(S.banned.map(b => b.id));
-  const card = r => {
-    const rv = S.reviews.find(x => x.id === r.reviewId);
-    const ai = aiRes[r.id];
+  const card = g => {
+    const r = g[0], rv = S.reviews.find(x => x.id === r.reviewId);
+    const n = g.length, auto = n >= HIDE_AT;
     const rc = r.reviewerUid ? S.reports.filter(x => x.reviewerUid === r.reviewerUid).length : 0;
     const rn = r.reviewerUid ? (S.revByU.get(r.reviewerUid) || []).length : 0;
-    return `<div class="rep"><div class="t"><span class="mono">${fmtDT(r.time)}</span><span class="pill r">${esc(r.reason)}</span>
-        <span>Şikâyet eden: <b style="color:var(--fg)">${esc(r.reporter)}</b></span></div>
+    const tally = {}; g.forEach(x => { const k = x.reason.startsWith('Diğer') ? 'Diğer' : x.reason; tally[k] = (tally[k] || 0) + 1; });
+    return `<div class="rep"><div class="t"><span class="mono">${fmtDT(r.time)}</span><span class="pill r">⚑ ${n} şikâyet</span>
+        ${auto ? '<span class="pill r">uygulamada gizlendi</span>' : `<span class="pill">${HIDE_AT - n} şikâyet daha → gizlenir</span>`}</div>
       <div style="margin-top:6px"><b>${esc(r.productName)}</b> · yorumcu <b>${esc(r.reviewer)}</b>
         ${bannedSet.has(r.reviewerUid) ? '<span class="pill r">askıda</span>' : ''}
         <span style="color:var(--mut);font-size:12px">· ${rn} yorum, ${rc} şikâyet</span></div>
       <blockquote>${esc(rv ? rv.text : r.excerpt)}${rv ? '' : '<br><span style="color:var(--yel)">(yorum zaten silinmiş)</span>'}</blockquote>
-      ${ai ? `<div class="ai ${verdictCls[ai.verdict] ?? ''}"><b>AI: ${esc(ai.verdict)}</b> · önem ${esc(ai.severity)}/3 · ${esc(ai.category)}<br>${esc(ai.reason)}<br><b>Önerilen: ${esc(actLabel[ai.action] || ai.action)}</b></div>` : ''}
+      <div>${Object.entries(tally).map(([k, v]) => `<span class="pill">${esc(k)} × ${v}</span>`).join(' ')}</div>
+      <details style="margin-top:8px"><summary style="cursor:pointer;color:var(--acc)">Kim, neden şikâyet etti? (${n})</summary>
+        ${g.map(x => `<div class="rv" style="padding:6px 0"><b style="color:var(--fg)">${esc(x.reporter || 'bilinmiyor')}</b> <span class="mono" style="color:var(--mut)">${fmtDT(x.time)}</span><br>${esc(x.reason)}</div>`).join('')}</details>
       <div class="acts">
         ${rv ? `<button class="btn red sm" data-act="repdel" data-id="${esc(r.id)}">Yorumu sil</button>` : ''}
         ${r.reviewerUid ? (bannedSet.has(r.reviewerUid) ? `<button class="btn ghost sm" data-act="unban" data-uid="${esc(r.reviewerUid)}">Banı kaldır</button>` : `<button class="btn red sm" data-act="ban" data-uid="${esc(r.reviewerUid)}" data-name="${esc(r.reviewer)}">Kullanıcıyı askıya al</button>`) : ''}
-        <button class="btn ghost sm" data-act="dismiss" data-id="${esc(r.id)}">Yoksay</button></div></div>`;
+        <button class="btn ghost sm" data-act="dismiss" data-id="${esc(r.id)}">Yoksay (${n})</button></div></div>`;
   };
-  return `<div class="tools"><button class="btn sm" id="btnAI" data-act="ai">🤖 AI ile analiz et</button>
-      <button class="btn ghost sm" data-act="aicopy">Promptu kopyala</button><button class="btn ghost sm" data-act="aipaste">AI yanıtını yapıştır</button></div>
-    <div class="meta">${nf(l.length)} bekleyen şikâyet · AI sadece öneri verir, işlemleri sen onaylarsın</div>
-    ${l.map(card).join('') || '<div class="empty">Bekleyen şikâyet yok 🎉</div>'}
-    <div class="panel"><h3>Askıya alınan hesaplar</h3>
-    ${S.banned.map(b => `<div class="rv" style="border:0;padding:6px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>${esc(b.name)}</b> <span class="pill">${fmtDate(b.time)}</span> <span style="color:var(--mut);flex:1">${esc(b.reason)}</span><button class="btn ghost sm" data-act="unban" data-uid="${esc(b.id)}">Banı kaldır</button></div>`).join('') || '<div class="empty">Yok</div>'}</div>`;
+  return `    <div class="meta">${nf(groups.length)} şikâyetli yorum (${nf(S.reports.length)} şikâyet) · ${HIDE_AT}+ şikâyet alan yorum uygulamada otomatik gizlenir</div>
+    ${groups.map(card).join('') || '<div class="empty">Bekleyen şikâyet yok 🎉</div>'}`;
+}
+
+function viewBanned() {
+  const accBy = new Map(S.accounts.map(a => [a.uid, a]));
+  const l = [...S.banned].sort((a, b) => (b.time || 0) - (a.time || 0));
+  return `<div class="meta">${nf(l.length)} askıya alınmış hesap</div>
+    <div class="tw"><table><tr><th>Hesap</th><th>E-posta</th><th>Tarih</th><th>Sebep</th><th></th></tr>
+    ${l.map(b => { const a = accBy.get(b.id); return `<tr><td><b>${esc(b.name || a?.name || b.id.slice(0, 8))}</b><br><span class="mono" style="color:var(--mut);font-size:11px">${esc(b.id.slice(0, 8))}…</span></td>
+      <td>${esc(a?.email || a?.phone || '—')}</td><td>${fmtDT(b.time)}</td><td class="txt">${b.reason ? esc(b.reason) : '<span style="color:var(--mut)">sebep yazılmadı</span>'}</td>
+      <td><button class="btn ghost sm" data-act="unban" data-uid="${esc(b.id)}">Banı kaldır</button></td></tr>`; }).join('') || '<tr><td colspan="5" class="empty">Askıya alınmış hesap yok</td></tr>'}
+    </table></div>`;
+}
+
+let uq = '';
+function viewUsers() {
+  const q = uq.trim().toLowerCase();
+  const l = S.accounts.filter(a => !q || (a.name + ' ' + (a.email || '') + ' ' + (a.phone || '') + ' ' + a.provider).toLowerCase().includes(q)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const shown = l.slice(0, lim.users);
+  const bannedSet = new Set(S.banned.map(b => b.id));
+  return `<div class="tools"><input type="search" id="uq" placeholder="Ad veya e-posta ara…" value="${esc(uq)}"></div>
+    <div class="meta">${nf(l.length)} kullanıcı · e-posta bilgisi, uygulamayı yeni sürümle açan hesaplar için görünür</div>
+    <div class="tw"><table><tr><th>Kullanıcı adı</th><th>E-posta / telefon</th><th>Yöntem</th><th>Kayıt</th><th>Son görülme</th><th></th></tr>
+    ${shown.map(a => `<tr class="cl" data-a="${esc(a.uid)}"><td><b>${esc(a.name)}</b>${bannedSet.has(a.uid) ? ' <span class="pill r">askıda</span>' : ''}</td>
+      <td>${esc(a.email || a.phone || '—')}</td><td>${esc(a.provider || '—')}</td><td>${fmtDate(a.createdAt)}</td><td>${ago(a.lastSeen)}</td>
+      <td>${bannedSet.has(a.uid) ? `<button class="btn ghost sm" data-act="unban" data-uid="${esc(a.uid)}">Banı kaldır</button>` : `<button class="btn red sm" data-act="ban" data-uid="${esc(a.uid)}" data-name="${esc(a.name)}">Askıya al</button>`}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Sonuç yok</td></tr>'}
+    </table></div>${l.length > shown.length ? '<button class="more" id="moreU">Daha fazla göster</button>' : ''}`;
 }
 
 function render() {
   if (!S) return;
-  const v = {overview: viewOverview, products: viewProducts, reviews: viewReviews, accounts: viewAccounts, reports: viewReports}[tab];
+  const v = {overview: viewOverview, products: viewProducts, reviews: viewReviews, accounts: viewAccounts, reports: viewReports, banned: viewBanned, users: viewUsers}[tab];
+  const nb = groupReports().length; const bd = $('#bdRep'); bd.textContent = nb; bd.classList.toggle('hidden', !nb);
   $('#view').innerHTML = v();
   const bind = (id, ev, fn) => { const e = $(id); if (e) e.addEventListener(ev, fn); };
   bind('#pq', 'input', e => { pq = e.target.value; lim.products = 60; keepFocus(render, '#pq'); });
@@ -436,6 +478,8 @@ function render() {
   bind('#rq', 'input', e => { rq = e.target.value; lim.reviews = 60; keepFocus(render, '#rq'); });
   bind('#rf', 'change', e => { rfilter = e.target.value; render(); }); if ($('#rf')) $('#rf').value = rfilter;
   bind('#aq', 'input', e => { aq = e.target.value; lim.accounts = 60; keepFocus(render, '#aq'); });
+  bind('#uq', 'input', e => { uq = e.target.value; lim.users = 60; keepFocus(render, '#uq'); });
+  bind('#moreU', 'click', () => { lim.users += 100; render(); });
   bind('#moreP', 'click', () => { lim.products += 100; render(); });
   bind('#moreR', 'click', () => { lim.reviews += 100; render(); });
   bind('#moreA', 'click', () => { lim.accounts += 100; render(); });
@@ -456,11 +500,11 @@ document.addEventListener('click', async e => {
   if (act === 'aipaste') { const r = await ask({title: 'AI yanıtını yapıştır', body: 'Promptu bir yapay zekaya yapıştırıp verdiği JSON yanıtını buraya yapıştır.', input: '{"results":[…]}', textarea: true, ok: 'Uygula'}); if (r.ok) { try { toast(parseAI(r.value) + ' şikâyet işlendi'); render(); } catch (x) { warnSet('ai', 'Yanıt okunamadı: ' + x.message); setTimeout(() => warnSet('ai'), 8000); } } return; }
   if (act === 'unban') { const r = await ask({title: 'Banı kaldır', body: 'Bu hesap yeniden giriş yapabilecek.', ok: 'Banı kaldır'}); if (r.ok) run(() => A.unban(d.uid), 'Ban kaldırıldı'); return; }
   if (act === 'ban') { const r = await ask({title: `“${d.name}” askıya alınsın mı?`, body: 'Kullanıcı çıkış yaptırılır ve giriş yapamaz. İsteğe bağlı bir not yazarsan kullanıcıya bildirim gider, boş bırakırsan gitmez.', input: 'Neden? (isteğe bağlı)', ok: 'Askıya al', danger: true}); if (r.ok) run(async () => { await A.ban(d.uid, d.name, r.value); $('#drawer').classList.add('hidden'); }, 'Hesap askıya alındı'); return; }
-  if (act === 'dismiss') { run(() => A.dismiss(d.id), 'Şikâyet kapatıldı'); return; }
+  if (act === 'dismiss') { const rep = S.reports.find(x => x.id === d.id); const ids = S.reports.filter(x => rep && (x.reviewId || x.id) === (rep.reviewId || rep.id)).map(x => x.id); run(async () => { for (const i of ids) await A.dismiss(i); }, 'Şikâyetler kapatıldı'); return; }
   if (act === 'repdel') {
     const rep = S.reports.find(x => x.id === d.id), rv = rep && S.reviews.find(x => x.id === rep.reviewId); if (!rep || !rv) return;
     const r = await ask({title: 'Yorum silinsin mi?', body: 'İsteğe bağlı not yazarsan yorum sahibine bildirim gider.', input: 'Not (isteğe bağlı)', ok: 'Yorumu sil', danger: true});
-    if (r.ok) run(async () => { await A.delReview(rv.pid, rv.id, rv.uid, S.pById.get(String(rv.pid))?.name || '', r.value); await A.dismiss(rep.id); }, 'Yorum silindi');
+    if (r.ok) run(async () => { await A.delReview(rv.pid, rv.id, rv.uid, S.pById.get(String(rv.pid))?.name || '', r.value); for (const x of S.reports.filter(x => x.reviewId === rep.reviewId)) await A.dismiss(x.id); }, 'Yorum silindi');
     return;
   }
   if (act === 'delrev') {
@@ -491,9 +535,8 @@ function openProduct(id) {
   const by = S.accounts.find(a => a.uid === p.createdBy);
   openSheet(`<button class="ib" data-x>← Kapat</button><h2>${esc(p.name)}</h2>
     <div style="color:var(--mut)">${esc(p.brand)} · ${p.cats.map(esc).join(', ')}</div>
-    <div class="grid stats" style="grid-template-columns:repeat(3,1fr);margin-top:12px">
+    <div class="grid stats" style="grid-template-columns:repeat(2,1fr);margin-top:12px">
       <div class="stat"><div class="k">Yorum</div><div class="v">${nf(p.n)}</div></div>
-      <div class="stat"><div class="k">Puan</div><div class="v">${p.n ? f1(p.avg) : '—'}</div></div>
       <div class="stat"><div class="k">Fiyat</div><div class="v" style="font-size:16px">${p.max ? nf(p.min) + '–' + nf(p.max) + '₺' : '—'}</div></div></div>
     <div style="color:var(--mut);margin:10px 0;font-size:12px">Eklenme: ${fmtDT(p.createdAt)} · Ekleyen: ${esc(by ? by.name : (p.createdBy === 'sample' ? 'örnek veri' : p.createdBy === 'deleted' ? 'silinmiş kullanıcı' : p.createdBy || '—'))}${p.barcode ? ' · Barkod: ' + esc(p.barcode) : ''}</div>
     <div class="acts"><button class="btn red sm" data-act="delprod" data-pid="${esc(id)}">Ürünü sil</button></div>
@@ -524,8 +567,9 @@ function demoData() {
   const prods = [['Eti Burçak', 'Eti', ['Atıştırmalık']], ['Ülker Çikolatalı Gofret', 'Ülker', ['Çikolata']], ['Sütaş Süzme Yoğurt', 'Sütaş', ['Süt ürünleri']], ['Pınar Süt 1L', 'Pınar', ['Süt ürünleri']], ['Torku Banvit Piliç', 'Torku', ['Et']], ['Dimes Şeftali Suyu', 'Dimes', ['İçecek']], ['Namet Sucuk', 'Namet', ['Et']], ['Lipton Ice Tea', 'Lipton', ['İçecek']], ['Doğuş Çay', 'Doğuş', ['İçecek']], ['Tadelle Çikolata', 'Ülker', ['Çikolata']], ['Çaykur Rize Çayı', 'Çaykur', ['İçecek']], ['Uno Ekmek', 'Uno', ['Fırın']], ['Banvit Nugget', 'Banvit', ['Dondurulmuş']], ['Peyman Fındık Ezmesi', 'Peyman', ['Kahvaltılık']], ['Eker Ayran', 'Eker', ['İçecek']]];
   const markets = ['BİM', 'A101', 'ŞOK', 'Migros', 'CarrefourSA'], cities = ['İstanbul', 'Ankara', 'İzmir', 'Elazığ', 'Bursa', 'Antalya', 'Adana'];
   const products = prods.map((p, i) => ({id: String(1000 + i), name: p[0], brand: p[1], cats: p[2], createdAt: new Date(Date.now() - rnd() * 40 * 86400000), createdBy: 'u' + (i % 12), barcode: '86900' + (10000 + i)}));
-  const accounts = Array.from({length: 74}, (_, i) => ({uid: 'u' + i, name: names[i % names.length] + (i >= names.length ? ' ' + (i + 1) : ''), provider: pick(['google', 'google', 'e-posta', 'telefon']),
+  const accounts = Array.from({length: 74}, (_, i) => ({uid: 'u' + i, name: names[i % names.length] + (i >= names.length ? ' ' + (i + 1) : ''), provider: pick(['google', 'google', 'e-posta', 'telefon']), email: 'kullanici' + i + '@ornek.com', phone: '',
     createdAt: new Date(Date.now() - rnd() * 45 * 86400000), lastSeen: new Date(Date.now() - rnd() * rnd() * 20 * 86400000), days: Array.from({length: 1 + Math.floor(rnd() * 14)}, (_, j) => String(j))}));
+  accounts.slice(0, 5).forEach((a, i) => a.lastSeen = new Date(Date.now() - i * 60000));
   const reviews = Array.from({length: 320}, (_, i) => {
     const a = pick(accounts), p = pick(products);
     return {id: 'r' + i, pid: p.id, uid: a.uid, user: a.name, rating: 1 + Math.floor(rnd() * 9) / 2 + (rnd() > .55 ? 0.5 : 0), price: Math.round(20 + rnd() * 80), market: pick(markets), city: pick(cities),
@@ -533,9 +577,12 @@ function demoData() {
       date: new Date(Date.now() - Math.pow(rnd(), 1.6) * 40 * 86400000), photos: rnd() > .8 ? 1 : 0, reports: rnd() > .96 ? 1 : 0, up: Math.floor(rnd() * 9), down: Math.floor(rnd() * 3)};
   });
   const dau = Array.from({length: 30}, (_, i) => Math.round(8 + i * 0.9 + rnd() * 10));
-  const reports = [{id: 'x1', reporter: 'Selin', productName: 'Eti Burçak', reviewer: 'Cem', reason: 'Spam / reklam', excerpt: 'En ucuz bu sitede, linke tıkla…', time: new Date(Date.now() - 3600e3 * 5)}, {id: 'x2', reporter: 'Kaan', productName: 'Namet Sucuk', reviewer: 'Oğuz', reason: 'Küfür / hakaret', excerpt: '(uygunsuz içerik)', time: new Date(Date.now() - 3600e3 * 30)}];
-  reports.forEach((r, i) => { const rv = reviews[i * 9 + 3]; Object.assign(r, {reviewId: rv.id, productId: rv.pid, reviewerUid: rv.uid, reporterUid: 'u1'}); });
-  return {products, reviews, accounts, reports, banned: [{id: 'u9', name: 'Tolga', reason: 'Spam', time: new Date(Date.now() - 86400e3 * 3)}], dau, totals: {accounts: 74, taste: 21, pvotes: 640}};
+  const reasons = ['Küfür / hakaret', 'Spam veya reklam', 'Sahte / yanıltıcı yorum', 'Diğer: Başka markayı kötülüyor', 'Cinsel içerik', 'Ürünle alakasız'];
+  const reports = [];
+  const mk = (rv, n, off) => { for (let k = 0; k < n; k++) { const ra = accounts[(off + k) % accounts.length]; reports.push({id: 'x' + reports.length, reporter: ra.name, reporterUid: ra.uid, reviewId: rv.id, productId: rv.pid, productName: products.find(p => p.id === rv.pid).name, reviewer: rv.user, reviewerUid: rv.uid, reason: reasons[(off + k) % reasons.length], excerpt: rv.text, time: new Date(Date.now() - 3600e3 * (2 + k * 3 + off))}); } };
+  mk(reviews[12], 7, 20); mk(reviews[40], 2, 3); mk(reviews[77], 1, 9);
+  reviews[12].reports = 7; reviews[40].reports = 2; reviews[77].reports = 1;
+  return {products, reviews, accounts, reports, banned: [{id: 'u9', name: accounts[9].name, reason: 'Spam', time: new Date(Date.now() - 86400e3 * 3)}, {id: 'u14', name: accounts[14].name, reason: '', time: new Date(Date.now() - 86400e3 * 8)}], dau, totals: {accounts: 74, taste: 21, pvotes: 640}};
 }
 
 /* ── gerçek mod: canlı (onSnapshot) dinleme ── */
@@ -543,7 +590,7 @@ const mapProduct = d => {const m = d.data(); return {id: d.id, name: m.name || '
 const mapReview = d => {const m = d.data(), v = Object.values(m.votes || {}); return {id: d.id, pid: m.productId, uid: m.uid || '', user: m.user || '', rating: Number(m.rating) || 0, price: Number(m.price) || 0,
   market: m.market || '', city: m.city || '', text: m.text || '', date: ts(m.createdAt) || ts(m.date), photos: Number(m.photos) || 0, reports: (m.reports || []).length,
   up: v.filter(x => x === 1).length, down: v.filter(x => x === -1).length};};
-const mapAccount = d => {const m = d.data(); return {uid: d.id, name: m.name || '', provider: m.provider || '', createdAt: ts(m.createdAt), lastSeen: ts(m.lastSeen), days: m.days || []};};
+const mapAccount = d => {const m = d.data(); return {uid: d.id, name: m.name || '', provider: m.provider || '', email: m.email || '', phone: m.phone || '', createdAt: ts(m.createdAt), lastSeen: ts(m.lastSeen), days: m.days || []};};
 const mapReport = d => {const m = d.data(); return {id: d.id, reporter: m.reporter || '', reporterUid: m.reporterUid || '', reviewId: m.reviewId || '', productId: m.productId, productName: m.productName || '', reviewer: m.reviewer || '', reviewerUid: m.reviewerUid || '', reason: m.reason || '', excerpt: m.excerpt || '', time: ts(m.time)};};
 const mapBanned = d => {const m = d.data(); return {id: d.id, name: m.name || '', reason: m.reason || '', time: ts(m.time)};};
 
@@ -568,7 +615,7 @@ function recompute() {
     S = compute(buildRaw()); lastUpd = new Date(); setUpd();
     const f = document.activeElement, id = f && f.id, pos = f && f.selectionStart;
     render();
-    if (id && ['pq', 'rq', 'aq'].includes(id)) { const n = $('#' + id); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch {} } }
+    if (id && ['pq', 'rq', 'aq', 'uq'].includes(id)) { const n = $('#' + id); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch {} } }
   }, 250);
 }
 async function counts() {
@@ -715,12 +762,14 @@ document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () =>
   tab = b.dataset.t; document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b)); render(); window.scrollTo(0, 0);
 }));
 $('#btnRefresh').addEventListener('click', refresh);
-$('#btnSet').addEventListener('click', openSettings);
-setInterval(() => { if (S) setUpd(); }, 30000);
+
+setInterval(() => { if (S) { setUpd(); if (tab === 'overview') render(); } }, 30000);
 
 function showApp(name) {
   $('#login').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#who').textContent = name || '';
-  $('#demoTag').classList.toggle('hidden', !DEMO); if (DEMO) refresh(); else startLive();
+  $('#demoTag').classList.toggle('hidden', !DEMO);
+  if (String(cfg.apiKey).startsWith('BURAYA')) warnSet('cfg', 'Bu sayfa DEMO modunda çünkü firebase-config.js dosyasında gerçek Firebase bilgileri yok (BURAYA… yazıyor). GitHub deposundaki firebase-config.js dosyasını kendi bilgilerinle düzelt.');
+  if (DEMO) refresh(); else startLive();
 }
 function showLogin(msg) {
   $('#app').classList.add('hidden'); $('#login').classList.remove('hidden'); $('#loginErr').textContent = msg || '';
