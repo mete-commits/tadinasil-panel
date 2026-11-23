@@ -131,7 +131,7 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 <div id="gate" class="hidden">
   <div class="lbox">
     <h1>Tadı <span style="color:var(--acc)">Nasıl?</span></h1>
-    <p>Erişim kodu</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 8</div>
+    <p>Erişim kodu</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 9</div>
     <input id="gc" type="password" placeholder="Kodu yaz" autocomplete="off" style="width:100%;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg2,#0f141b);color:var(--fg);font:inherit">
     <button class="btn" id="gb" style="width:100%">Devam</button>
     <div class="err" id="gerr"></div>
@@ -141,7 +141,7 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 <div id="login" class="hidden">
   <div class="lbox">
     <h1>Tadı <span style="color:var(--acc)">Nasıl?</span></h1>
-    <p>Yönetim paneli</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 8</div>
+    <p>Yönetim paneli</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 9</div>
     <button class="btn" id="btnLogin" style="width:100%">Google ile giriş yap</button>
     <div style="margin:16px 0 10px;color:var(--mut);font-size:12px">veya e-posta ile</div>
     <input id="em" type="email" placeholder="E-posta" autocomplete="username" style="width:100%;margin-bottom:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--fg);font:inherit">
@@ -261,7 +261,7 @@ const DEMO = /[?&]demo/.test(location.search) || String(cfg.apiKey).startsWith('
 
 /* ─────────────  veri → istatistik  ───────────── */
 function compute(raw) {
-  const {products, reviews, accounts, reports, banned, dau, totals} = raw; const blocks = raw.blocks || [], bannedIps = raw.bannedIps || [];
+  const {products, reviews, accounts, reports, banned, dau, totals} = raw; const blocks = raw.blocks || [];
   const pById = new Map(products.map(p => [String(p.id), p]));
   const revByP = new Map(), revByU = new Map();
   reviews.forEach(r => {
@@ -300,7 +300,7 @@ function compute(raw) {
   blocks.forEach(b => { const k = b.blockedUid; if (!k) return; const g = bm.get(k) || bm.set(k, {uid: k, name: b.blockedName, list: []}).get(k); g.list.push(b); if (b.blockedName) g.name = b.blockedName; });
   const blockGroups = [...bm.values()].map(g => ({...g, n: new Set(g.list.map(x => x.blockerUid)).size, list: g.list.sort((x, y) => (y.time || 0) - (x.time || 0))})).sort((a, b) => b.n - a.n || (b.list[0].time || 0) - (a.list[0].time || 0));
   return {
-    ...raw, blocks, bannedIps, blockGroups, pById, revByP, revByU, days30, dau, totals,
+    ...raw, blocks, blockGroups, pById, revByP, revByU, days30, dau, totals,
     k: {
       accounts: totals.accounts ?? accounts.length, today: dau[dau.length - 1] ?? 0, d7: act(7), d30: act(30),
       products: products.length, reviews: reviews.length,
@@ -482,12 +482,6 @@ function viewBanned() {
     ${l.map(b => { const a = accBy.get(b.id); return `<tr><td><b>${esc(b.name || a?.name || b.id.slice(0, 8))}</b><br><span class="mono" style="color:var(--mut);font-size:11px">${esc(b.id.slice(0, 8))}…</span></td>
       <td>${esc(a?.email || a?.phone || '—')}</td><td>${fmtDT(b.time)}</td><td class="txt">${b.reason ? esc(b.reason) : '<span style="color:var(--mut)">sebep yazılmadı</span>'}</td>
       <td><button class="btn ghost sm" data-act="unban" data-uid="${esc(b.id)}">Banı kaldır</button></td></tr>`; }).join('') || '<tr><td colspan="5" class="empty">Askıya alınmış hesap yok</td></tr>'}
-    </table></div>
-    <h3 style="font-size:12px;color:var(--mut);text-transform:uppercase;margin:20px 0 8px">Yasaklı IP’ler (${nf(S.bannedIps.length)})</h3>
-    <div class="tw"><table><tr><th>IP</th><th>Tarih</th><th>Sebep</th><th>Bu IP’deki hesaplar</th><th></th></tr>
-    ${S.bannedIps.map(b => `<tr><td class="mono">${esc(b.ip)}</td><td>${fmtDT(b.time)}</td><td class="txt">${b.reason ? esc(b.reason) : '<span style="color:var(--mut)">sebep yazılmadı</span>'}</td>
-      <td>${esc(S.accounts.filter(a => a.ip === b.ip).map(a => a.name).join(', ') || '—')}</td>
-      <td><button class="btn ghost sm" data-act="unbanip" data-ip="${esc(b.ip)}">Kaldır</button></td></tr>`).join('') || '<tr><td colspan="5" class="empty">Yasaklı IP yok</td></tr>'}
     </table></div>`;
 }
 
@@ -501,7 +495,7 @@ function viewUsers() {
     <div class="meta">${nf(l.length)} kullanıcı · e-posta bilgisi, uygulamayı yeni sürümle açan hesaplar için görünür</div>
     <div class="tw"><table><tr><th>Kullanıcı adı</th><th>E-posta / telefon</th><th>Yöntem</th><th>Kayıt</th><th>Son görülme</th><th></th></tr>
     ${shown.map(a => `<tr class="cl" data-a="${esc(a.uid)}"><td><b>${esc(a.name)}</b>${bannedSet.has(a.uid) ? ' <span class="pill r">askıda</span>' : ''}</td>
-      <td>${esc(a.email || a.phone || '—')}${a.ip ? `<br><span class="mono" style="color:var(--mut);font-size:11px">${esc(a.ip)}${S.bannedIps.some(b => b.ip === a.ip) ? ' · yasaklı' : ''}</span>` : ''}</td><td>${esc(a.provider || '—')}</td><td>${fmtDate(a.createdAt)}</td><td>${ago(a.lastSeen)}</td>
+      <td>${esc(a.email || a.phone || '—')}</td><td>${esc(a.provider || '—')}</td><td>${fmtDate(a.createdAt)}</td><td>${ago(a.lastSeen)}</td>
       <td>${bannedSet.has(a.uid) ? `<button class="btn ghost sm" data-act="unban" data-uid="${esc(a.uid)}">Banı kaldır</button>` : `<button class="btn red sm" data-act="ban" data-uid="${esc(a.uid)}" data-name="${esc(a.name)}">Askıya al</button>`}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Sonuç yok</td></tr>'}
     </table></div>${l.length > shown.length ? '<button class="more" id="moreU">Daha fazla göster</button>' : ''}`;
 }
@@ -537,8 +531,6 @@ document.addEventListener('click', async e => {
   if (act === 'ai') return runAI();
   if (act === 'aicopy') { try { await navigator.clipboard.writeText(aiPrompt()); toast('Prompt kopyalandı. Bir yapay zekaya yapıştır.'); } catch { warnSet('x', 'Kopyalanamadı'); } return; }
   if (act === 'aipaste') { const r = await ask({title: 'AI yanıtını yapıştır', body: 'Promptu bir yapay zekaya yapıştırıp verdiği JSON yanıtını buraya yapıştır.', input: '{"results":[…]}', textarea: true, ok: 'Uygula'}); if (r.ok) { try { toast(parseAI(r.value) + ' şikâyet işlendi'); render(); } catch (x) { warnSet('ai', 'Yanıt okunamadı: ' + x.message); setTimeout(() => warnSet('ai'), 8000); } } return; }
-  if (act === 'banip') { const r = await ask({title: `IP ${d.ip} yasaklansın mı?`, body: 'Bu IP adresinden uygulamaya giren herkes (başka hesaplar dahil) giriş yaptıktan hemen sonra çıkış yaptırılır. Dikkat: mobil operatör ve ortak Wi-Fi ağlarında birçok masum kullanıcı aynı IP’yi paylaşabilir, IP’ler de zamanla değişir. Hesabı askıya almak daha güvenlidir.', input: 'Neden? (isteğe bağlı)', ok: 'IP’yi yasakla', danger: true}); if (r.ok) run(async () => { await A.banIp(d.ip, r.value || ''); $('#drawer').classList.add('hidden'); }, 'IP yasaklandı'); return; }
-  if (act === 'unbanip') { const r = await ask({title: 'IP yasağını kaldır', body: `${d.ip} yeniden erişebilecek.`, ok: 'Kaldır'}); if (r.ok) run(() => A.unbanIp(d.ip), 'IP yasağı kaldırıldı'); return; }
   if (act === 'unban') { const r = await ask({title: 'Banı kaldır', body: 'Bu hesap yeniden giriş yapabilecek.', ok: 'Banı kaldır'}); if (r.ok) run(() => A.unban(d.uid), 'Ban kaldırıldı'); return; }
   if (act === 'ban') { const r = await ask({title: `“${d.name}” askıya alınsın mı?`, body: 'Kullanıcı çıkış yaptırılır ve giriş yapamaz. İsteğe bağlı bir not yazarsan kullanıcıya bildirim gider, boş bırakırsan gitmez.', input: 'Neden? (isteğe bağlı)', ok: 'Askıya al', danger: true}); if (r.ok) run(async () => { await A.ban(d.uid, d.name, r.value); $('#drawer').classList.add('hidden'); }, 'Hesap askıya alındı'); return; }
   if (act === 'riskx') { const a = riskDis(); a.push(d.uid); store.set('tp_risk_dis', JSON.stringify(a)); render(); return; }
@@ -591,7 +583,6 @@ function openAccount(uid) {
   const mine = S.products.filter(p => p.createdBy === uid);
   openSheet(`<button class="ib" data-x>← Kapat</button><h2>${esc(a.name)}</h2>
     <div style="color:var(--mut)">${esc(a.provider)} · UID <span class="mono">${esc(uid.slice(0, 8))}…</span>${a.email ? ' · ' + esc(a.email) : ''}</div>
-    ${a.ip ? `<div style="color:var(--mut);margin-top:4px">IP: <span class="mono">${esc(a.ip)}</span> ${S.bannedIps.some(b => b.ip === a.ip) ? `<span class="pill r">yasaklı</span> <button class="btn ghost sm" data-act="unbanip" data-ip="${esc(a.ip)}">Yasağı kaldır</button>` : `<button class="btn red sm" data-act="banip" data-ip="${esc(a.ip)}">IP’yi yasakla</button>`}${S.accounts.filter(x => x.ip === a.ip && x.uid !== uid).length ? ` <span style="font-size:12px">· aynı IP’de ${S.accounts.filter(x => x.ip === a.ip && x.uid !== uid).length} başka hesap</span>` : ''}</div>` : '<div style="color:var(--mut);margin-top:4px;font-size:12px">IP bilgisi yok (kullanıcı yeni sürümü henüz açmadı)</div>'}
     <div class="grid stats" style="grid-template-columns:repeat(3,1fr);margin-top:12px">
       <div class="stat"><div class="k">Aktif gün</div><div class="v">${nf(a.days.length)}</div></div>
       <div class="stat"><div class="k">Yorum</div><div class="v">${nf(rs.length)}</div></div>
@@ -613,7 +604,6 @@ function demoData() {
   const products = prods.map((p, i) => ({id: String(1000 + i), name: p[0], brand: p[1], cats: p[2], createdAt: new Date(Date.now() - rnd() * 40 * 86400000), createdBy: 'u' + (i % 12), barcode: '86900' + (10000 + i)}));
   const accounts = Array.from({length: 74}, (_, i) => ({uid: 'u' + i, name: names[i % names.length] + (i >= names.length ? ' ' + (i + 1) : ''), provider: pick(['google', 'google', 'e-posta', 'telefon']), email: 'kullanici' + i + '@ornek.com', phone: '',
     createdAt: new Date(Date.now() - rnd() * 45 * 86400000), lastSeen: new Date(Date.now() - rnd() * rnd() * 20 * 86400000), days: Array.from({length: 1 + Math.floor(rnd() * 14)}, (_, j) => String(j))}));
-  accounts.forEach((a, i) => a.ip = '88.' + (230 + (i % 9)) + '.' + (i % 40) + '.' + (10 + i));
   accounts.slice(0, 5).forEach((a, i) => a.lastSeen = new Date(Date.now() - i * 60000));
   const reviews = Array.from({length: 320}, (_, i) => {
     const a = pick(accounts), p = pick(products);
@@ -627,10 +617,9 @@ function demoData() {
   const mk = (rv, n, off) => { for (let k = 0; k < n; k++) { const ra = accounts[(off + k) % accounts.length]; reports.push({id: 'x' + reports.length, reporter: ra.name, reporterUid: ra.uid, reviewId: rv.id, productId: rv.pid, productName: products.find(p => p.id === rv.pid).name, reviewer: rv.user, reviewerUid: rv.uid, reason: reasons[(off + k) % reasons.length], excerpt: rv.text, time: new Date(Date.now() - 3600e3 * (2 + k * 3 + off))}); } };
   mk(reviews[12], 7, 20); mk(reviews[40], 2, 3); mk(reviews[77], 1, 9);
   reviews[12].reports = 7; reviews[40].reports = 2; reviews[77].reports = 1;
-  const bannedIps = [{id: '88_238_0_17', ip: '88.238.0.17', reason: 'Spam hesapları', time: new Date(Date.now() - 86400e3 * 2)}];
   const blocks = []; const bk = (to, n, off) => { for (let k = 0; k < n; k++) { const a = accounts[(off + k) % accounts.length]; blocks.push({id: 'b' + blocks.length, blockerUid: a.uid, blockerName: a.name, blockedUid: accounts[to].uid, blockedName: accounts[to].name, time: new Date(Date.now() - 3600e3 * (k * 5 + to))}); } };
   bk(3, 16, 20); bk(7, 4, 30); bk(11, 2, 50);
-  return {bannedIps, blocks, products, reviews, accounts, reports, banned: [{id: 'u9', name: accounts[9].name, reason: 'Spam', time: new Date(Date.now() - 86400e3 * 3)}, {id: 'u14', name: accounts[14].name, reason: '', time: new Date(Date.now() - 86400e3 * 8)}], dau, totals: {accounts: 74, taste: 21, pvotes: 640}};
+  return {blocks, products, reviews, accounts, reports, banned: [{id: 'u9', name: accounts[9].name, reason: 'Spam', time: new Date(Date.now() - 86400e3 * 3)}, {id: 'u14', name: accounts[14].name, reason: '', time: new Date(Date.now() - 86400e3 * 8)}], dau, totals: {accounts: 74, taste: 21, pvotes: 640}};
 }
 
 /* ── gerçek mod: canlı (onSnapshot) dinleme ── */
@@ -638,14 +627,12 @@ const mapProduct = d => {const m = d.data(); return {id: d.id, name: m.name || '
 const mapReview = d => {const m = d.data(), v = Object.values(m.votes || {}); return {id: d.id, pid: m.productId, uid: m.uid || '', user: m.user || '', rating: Number(m.rating) || 0, price: Number(m.price) || 0,
   market: m.market || '', city: m.city || '', text: m.text || '', date: ts(m.createdAt) || ts(m.date), photos: Number(m.photos) || 0, reports: (m.reports || []).length,
   up: v.filter(x => x === 1).length, down: v.filter(x => x === -1).length};};
-const mapAccount = d => {const m = d.data(); return {uid: d.id, name: m.name || '', provider: m.provider || '', email: m.email || '', phone: m.phone || '', ip: m.ip || '', createdAt: ts(m.createdAt), lastSeen: ts(m.lastSeen), days: m.days || []};};
+const mapAccount = d => {const m = d.data(); return {uid: d.id, name: m.name || '', provider: m.provider || '', email: m.email || '', phone: m.phone || '', createdAt: ts(m.createdAt), lastSeen: ts(m.lastSeen), days: m.days || []};};
 const mapReport = d => {const m = d.data(); return {id: d.id, reporter: m.reporter || '', reporterUid: m.reporterUid || '', reviewId: m.reviewId || '', productId: m.productId, productName: m.productName || '', reviewer: m.reviewer || '', reviewerUid: m.reviewerUid || '', reason: m.reason || '', excerpt: m.excerpt || '', time: ts(m.time)};};
 const mapBlock = d => {const m = d.data(); return {id: d.id, blockerUid: m.blockerUid || '', blockerName: m.blockerName || '', blockedUid: m.blockedUid || '', blockedName: m.blockedName || '', time: ts(m.time)};};
-const ipKey = ip => ip.replace(/[:\/]/g, '_');
-const mapBannedIp = d => {const m = d.data(); return {id: d.id, ip: m.ip || d.id, reason: m.reason || '', time: ts(m.time)};};
 const mapBanned = d => {const m = d.data(); return {id: d.id, name: m.name || '', reason: m.reason || '', time: ts(m.time)};};
 
-const raw = {products: [], reviews: [], accounts: [], reports: [], banned: [], bannedIps: [], blocks: [], taste: 0, pvotes: 0};
+const raw = {products: [], reviews: [], accounts: [], reports: [], banned: [], blocks: [], taste: 0, pvotes: 0};
 let demoRaw = null, subs = [], countT = null, recT = null, lastUpd = null, liveOk = true;
 const HINT = '\n\nFirestore kurallarının son sürümünün yayınlandığından ve hesabının admins koleksiyonunda olduğundan emin ol.';
 const warns = {};
@@ -687,7 +674,6 @@ function startLive() {
   sub(collection(db, 'reports'), 'reports', mapReport, 'Şikâyetler');
   sub(collection(db, 'banned'), 'banned', mapBanned, 'Askıdaki hesaplar');
   sub(collectionGroup(db, 'blocks'), 'blocks', mapBlock, 'Engeller');
-  sub(collection(db, 'bannedIps'), 'bannedIps', mapBannedIp, 'Yasaklı IP\'ler');
   counts(); countT = setInterval(counts, 60000);
 }
 function stopLive() { subs.forEach(u => { try { u(); } catch {} }); subs = []; clearInterval(countT); S = null; }
@@ -699,15 +685,6 @@ const A = {
     const {db, FS, auth} = fb;
     await FS.setDoc(FS.doc(db, 'banned', uid), {name, reason, by: auth.currentUser.uid, time: FS.Timestamp.now()});
     if (reason.trim()) await notify(uid, 4, 0, '', 'hesabını askıya aldı. Yöneticinin notu: ' + reason.trim());
-  },
-  async banIp(ip, reason) {
-    if (DEMO) { demoRaw.bannedIps.push({id: ipKey(ip), ip, reason, time: new Date()}); return recompute(); }
-    const {db, FS, auth} = fb;
-    await FS.setDoc(FS.doc(db, 'bannedIps', ipKey(ip)), {ip, reason, by: auth.currentUser.uid, time: FS.Timestamp.now()});
-  },
-  async unbanIp(ip) {
-    if (DEMO) { demoRaw.bannedIps = demoRaw.bannedIps.filter(b => b.ip !== ip); return recompute(); }
-    await fb.FS.deleteDoc(fb.FS.doc(fb.db, 'bannedIps', ipKey(ip)));
   },
   async unban(uid) {
     if (DEMO) { demoRaw.banned = demoRaw.banned.filter(b => b.id !== uid); return recompute(); }
