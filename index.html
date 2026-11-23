@@ -131,7 +131,7 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 <div id="gate" class="hidden">
   <div class="lbox">
     <h1>Tadı <span style="color:var(--acc)">Nasıl?</span></h1>
-    <p>Erişim kodu</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 9</div>
+    <p>Erişim kodu</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 12</div>
     <input id="gc" type="password" placeholder="Kodu yaz" autocomplete="off" style="width:100%;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg2,#0f141b);color:var(--fg);font:inherit">
     <button class="btn" id="gb" style="width:100%">Devam</button>
     <div class="err" id="gerr"></div>
@@ -141,7 +141,7 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 <div id="login" class="hidden">
   <div class="lbox">
     <h1>Tadı <span style="color:var(--acc)">Nasıl?</span></h1>
-    <p>Yönetim paneli</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 9</div>
+    <p>Yönetim paneli</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 12</div>
     <button class="btn" id="btnLogin" style="width:100%">Google ile giriş yap</button>
     <div style="margin:16px 0 10px;color:var(--mut);font-size:12px">veya e-posta ile</div>
     <input id="em" type="email" placeholder="E-posta" autocomplete="username" style="width:100%;margin-bottom:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--fg);font:inherit">
@@ -166,6 +166,7 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
       <button class="tab" data-t="products">Ürünler</button>
       <button class="tab" data-t="reviews">Yorumlar</button>
       <button class="tab" data-t="accounts">Hesaplar</button>
+      <button class="tab" data-t="risk">Risk<span class="bd hidden" id="bdRisk"></span></button>
       <button class="tab" data-t="reports">Şikâyetler<span class="bd hidden" id="bdRep"></span></button>
       <button class="tab" data-t="blocks">Engeller</button>
       <button class="tab" data-t="banned">Askıdakiler</button>
@@ -474,6 +475,27 @@ function viewBlocks() {
       <div class="acts">${bannedSet.has(g.uid) ? `<button class="btn ghost sm" data-act="unban" data-uid="${esc(g.uid)}">Banı kaldır</button>` : `<button class="btn red sm" data-act="ban" data-uid="${esc(g.uid)}" data-name="${esc(g.name)}">Askıya al</button>`}</div></div>`).join('') || '<div class="empty">Henüz engel kaydı yok</div>'}`;
 }
 
+
+const RISK_WHY = {};
+function riskItems() {
+  const out = [];
+  S.reviews.forEach(r => { if (r.qstate === 'mid' || r.qstate === 'high') out.push({kind: 'r', id: r.id, pid: r.pid, uid: r.uid, user: r.user, score: r.qscore, state: r.qstate, why: r.qwhy, text: r.text, pname: S.pById.get(String(r.pid))?.name || ''}); });
+  S.products.forEach(p => { if (p.qstate === 'mid' || p.qstate === 'high') out.push({kind: 'p', id: String(p.id), pid: p.id, uid: p.createdBy, user: S.accounts.find(a => a.uid === p.createdBy)?.name || '', score: p.qscore, state: p.qstate, why: p.qwhy, text: [p.brand, p.name].filter(Boolean).join(' · '), pname: p.name}); });
+  return out.sort((a, b) => b.score - a.score);
+}
+function viewRisk() {
+  const l = riskItems(), hi = l.filter(x => x.state === 'high'), mid = l.filter(x => x.state === 'mid');
+  const card = x => `<div class="card" style="margin-bottom:10px"><div class="meta"><span class="pill ${x.state === 'high' ? 'r' : 'b'}">%${Math.round(x.score)} risk</span> <span class="pill">${x.kind === 'r' ? 'Yorum' : 'Ürün'}</span> <b>${esc(x.user || x.uid.slice(0, 8) || '—')}</b>${x.kind === 'r' && x.pname ? ' · ' + esc(x.pname) : ''}</div>
+    <div class="txt" style="margin:6px 0">${esc(x.text || '—')}</div>
+    <div style="margin-bottom:8px">${(x.why || []).map(w => `<span class="pill">${esc(w)}</span> `).join('') || '<span style="color:var(--mut)">neden kaydı yok</span>'}</div>
+    <div class="acts"><button class="btn sm" data-act="rkok" data-k="${x.kind}" data-pid="${esc(x.pid)}" data-id="${esc(x.id)}">Puan ver${x.state === 'high' ? ' ve yayına al' : ''}</button>
+      <button class="btn red sm" data-act="rkno" data-k="${x.kind}" data-pid="${esc(x.pid)}" data-id="${esc(x.id)}" data-uid="${esc(x.uid)}" data-pname="${esc(x.pname)}">Puan verme (gizle + uyar)</button>
+      <button class="btn ghost sm" data-act="rkdel" data-k="${x.kind}" data-pid="${esc(x.pid)}" data-id="${esc(x.id)}" data-uid="${esc(x.uid)}" data-pname="${esc(x.pname)}">Sil</button></div></div>`;
+  return `<div class="meta">${nf(hi.length)} yüksek risk · ${nf(mid.length)} puan incelemesi</div>
+    <h3 style="margin:14px 0 8px">Yüksek risk (%80+) — otomatik gizlendi</h3>${hi.map(card).join('') || '<div class="empty">Yüksek riskli içerik yok</div>'}
+    <h3 style="margin:18px 0 8px">Puan incelemesi (%35–79) — yayında, puan bekliyor</h3>${mid.map(card).join('') || '<div class="empty">Bekleyen inceleme yok</div>'}`;
+}
+
 function viewBanned() {
   const accBy = new Map(S.accounts.map(a => [a.uid, a]));
   const l = [...S.banned].sort((a, b) => (b.time || 0) - (a.time || 0));
@@ -502,8 +524,9 @@ function viewUsers() {
 
 function render() {
   if (!S) return;
-  const v = {overview: viewOverview, products: viewProducts, reviews: viewReviews, accounts: viewAccounts, reports: viewReports, banned: viewBanned, users: viewUsers, blocks: viewBlocks}[tab];
+  const v = {overview: viewOverview, products: viewProducts, reviews: viewReviews, accounts: viewAccounts, risk: viewRisk, reports: viewReports, banned: viewBanned, users: viewUsers, blocks: viewBlocks}[tab];
   const nb = groupReports().length; const bd = $('#bdRep'); bd.textContent = nb; bd.classList.toggle('hidden', !nb);
+  { const nr = riskItems().length; const b2 = $('#bdRisk'); b2.textContent = nr; b2.classList.toggle('hidden', !nr); }
   $('#view').innerHTML = v();
   const bind = (id, ev, fn) => { const e = $(id); if (e) e.addEventListener(ev, fn); };
   bind('#pq', 'input', e => { pq = e.target.value; lim.products = 60; keepFocus(render, '#pq'); });
@@ -533,6 +556,17 @@ document.addEventListener('click', async e => {
   if (act === 'aipaste') { const r = await ask({title: 'AI yanıtını yapıştır', body: 'Promptu bir yapay zekaya yapıştırıp verdiği JSON yanıtını buraya yapıştır.', input: '{"results":[…]}', textarea: true, ok: 'Uygula'}); if (r.ok) { try { toast(parseAI(r.value) + ' şikâyet işlendi'); render(); } catch (x) { warnSet('ai', 'Yanıt okunamadı: ' + x.message); setTimeout(() => warnSet('ai'), 8000); } } return; }
   if (act === 'unban') { const r = await ask({title: 'Banı kaldır', body: 'Bu hesap yeniden giriş yapabilecek.', ok: 'Banı kaldır'}); if (r.ok) run(() => A.unban(d.uid), 'Ban kaldırıldı'); return; }
   if (act === 'ban') { const r = await ask({title: `“${d.name}” askıya alınsın mı?`, body: 'Kullanıcı çıkış yaptırılır ve giriş yapamaz. İsteğe bağlı bir not yazarsan kullanıcıya bildirim gider, boş bırakırsan gitmez.', input: 'Neden? (isteğe bağlı)', ok: 'Askıya al', danger: true}); if (r.ok) run(async () => { await A.ban(d.uid, d.name, r.value); $('#drawer').classList.add('hidden'); }, 'Hesap askıya alındı'); return; }
+  if (act === 'rkok') { run(() => A.riskSet(d.k, d.pid, d.id, 'ok'), 'Puan verildi'); return; }
+  if (act === 'rkno') {
+    const r = await ask({title: 'Puan verilmesin mi?', body: 'İçerik gizlenir ve hesaba uyarı bildirimi gider. Not yazabilirsin.', input: 'Not (isteğe bağlı)', ok: 'Puan verme', danger: true});
+    if (r.ok) run(async () => { await A.riskSet(d.k, d.pid, d.id, 'rejected'); await notify(d.uid, 5, Number(d.pid) || 0, d.pname, (d.k === 'r' ? 'yorumunu otomatik kalite kontrolü sonucunda gizledi ve puan vermedi' : 'eklediğin ürünü kalite kontrolü sonucunda gizledi ve puan vermedi') + '. Lütfen anlamlı ve gerçek içerik paylaş; tekrarında hesabın askıya alınabilir.' + (r.value.trim() ? ' Yöneticinin notu: ' + r.value.trim() : '')); }, 'Gizlendi, uyarı gönderildi');
+    return;
+  }
+  if (act === 'rkdel') {
+    const r = await ask({title: 'Silinsin mi?', body: 'İçerik kalıcı olarak silinir.', ok: 'Sil', danger: true});
+    if (r.ok) run(() => d.k === 'r' ? A.delReview(d.pid, d.id, d.uid, d.pname, '') : A.delProduct(d.pid), 'Silindi');
+    return;
+  }
   if (act === 'riskx') { const a = riskDis(); a.push(d.uid); store.set('tp_risk_dis', JSON.stringify(a)); render(); return; }
   if (act === 'seeblocks') { tab = 'blocks'; document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.t === 'blocks')); render(); window.scrollTo(0, 0); return; }
   if (act === 'dismiss') { const rep = S.reports.find(x => x.id === d.id); const ids = S.reports.filter(x => rep && (x.reviewId || x.id) === (rep.reviewId || rep.id)).map(x => x.id); run(async () => { for (const i of ids) await A.dismiss(i); }, 'Şikâyetler kapatıldı'); return; }
@@ -611,6 +645,8 @@ function demoData() {
       text: pick(['Çok lezzetli, tekrar alırım.', 'Fiyatına göre idare eder.', 'Tadı beklediğim gibi değildi.', 'Aile boyu aldık, çocuklar bayıldı!', 'Biraz tuzlu ama fena değil.', 'Fiyat performans ürünü.', 'Bir daha almam.', 'Market indiriminde aldım, güzel.']),
       date: new Date(Date.now() - Math.pow(rnd(), 1.6) * 40 * 86400000), photos: rnd() > .8 ? 1 : 0, reports: rnd() > .96 ? 1 : 0, up: Math.floor(rnd() * 9), down: Math.floor(rnd() * 3)};
   });
+  [[4,'high',92,['rastgele harf dizisi','çok hızlı yazım']],[9,'high',85,['bağlantı içeriyor','kopyala-yapıştır']],[15,'mid',52,['kısa ve anlamsız','tekrar eden harfler']],[22,'mid',41,['çok büyük harf']],[30,'mid',60,['kısa sürede çok yorum']]].forEach(([i,st,sc,w]) => Object.assign(reviews[i], {qstate: st, qscore: sc, qwhy: w, text: st === 'high' ? 'asdfghjkl qwerty zxcv' : reviews[i].text}));
+  Object.assign(products[3], {qstate: 'mid', qscore: 47, qwhy: ['tanınmayan kelimeler']});
   const dau = Array.from({length: 30}, (_, i) => Math.round(8 + i * 0.9 + rnd() * 10));
   const reasons = ['Küfür / hakaret', 'Spam veya reklam', 'Sahte / yanıltıcı yorum', 'Diğer: Başka markayı kötülüyor', 'Cinsel içerik', 'Ürünle alakasız'];
   const reports = [];
@@ -623,10 +659,10 @@ function demoData() {
 }
 
 /* ── gerçek mod: canlı (onSnapshot) dinleme ── */
-const mapProduct = d => {const m = d.data(); return {id: d.id, name: m.name || '', brand: m.brand || '', cats: m.categories || [], createdAt: ts(m.createdAt), createdBy: m.createdBy || '', barcode: m.barcode || ''};};
+const mapProduct = d => {const m = d.data(); return {id: d.id, name: m.name || '', brand: m.brand || '', cats: m.categories || [], createdAt: ts(m.createdAt), createdBy: m.createdBy || '', barcode: m.barcode || '', qscore: Number(m.qscore) || 0, qstate: m.qstate || '', qwhy: m.qwhy || []};};
 const mapReview = d => {const m = d.data(), v = Object.values(m.votes || {}); return {id: d.id, pid: m.productId, uid: m.uid || '', user: m.user || '', rating: Number(m.rating) || 0, price: Number(m.price) || 0,
   market: m.market || '', city: m.city || '', text: m.text || '', date: ts(m.createdAt) || ts(m.date), photos: Number(m.photos) || 0, reports: (m.reports || []).length,
-  up: v.filter(x => x === 1).length, down: v.filter(x => x === -1).length};};
+  up: v.filter(x => x === 1).length, down: v.filter(x => x === -1).length, qscore: Number(m.qscore) || 0, qstate: m.qstate || '', qwhy: m.qwhy || []};};
 const mapAccount = d => {const m = d.data(); return {uid: d.id, name: m.name || '', provider: m.provider || '', email: m.email || '', phone: m.phone || '', createdAt: ts(m.createdAt), lastSeen: ts(m.lastSeen), days: m.days || []};};
 const mapReport = d => {const m = d.data(); return {id: d.id, reporter: m.reporter || '', reporterUid: m.reporterUid || '', reviewId: m.reviewId || '', productId: m.productId, productName: m.productName || '', reviewer: m.reviewer || '', reviewerUid: m.reviewerUid || '', reason: m.reason || '', excerpt: m.excerpt || '', time: ts(m.time)};};
 const mapBlock = d => {const m = d.data(); return {id: d.id, blockerUid: m.blockerUid || '', blockerName: m.blockerName || '', blockedUid: m.blockedUid || '', blockedName: m.blockedName || '', time: ts(m.time)};};
@@ -684,6 +720,10 @@ const A = {
     if (DEMO) { demoRaw.banned.push({id: uid, name, reason, time: new Date()}); return recompute(); }
     const {db, FS, auth} = fb;
     await FS.setDoc(FS.doc(db, 'banned', uid), {name, reason, by: auth.currentUser.uid, time: FS.Timestamp.now()});
+    // şikâyet edenlere ödül puanı (uygulamada seviye puanına eklenir)
+    const old7 = r => { const ac = S.accounts.find(x => x.uid === r); return ac && ac.createdAt && Date.now() - ac.createdAt.getTime() >= 7 * 86400e3; };
+    const reporters = [...new Set(S.reports.filter(x => x.reviewerUid === uid && x.reporterUid && x.reporterUid !== uid).map(x => x.reporterUid))].filter(old7); // yeni açılmış (7 günden genç) hesaplar ödül almaz
+    for (const r of reporters) await FS.setDoc(FS.doc(db, 'rewards', r + '_' + uid), {uid: r, pts: 2, kind: 'report', target: name || '', time: FS.Timestamp.now()});
     if (reason.trim()) await notify(uid, 4, 0, '', 'hesabını askıya aldı. Yöneticinin notu: ' + reason.trim());
   },
   async unban(uid) {
@@ -696,6 +736,11 @@ const A = {
     const ph = await FS.getDocs(FS.collection(rr, 'photos'));
     await delAll([...ph.docs.map(d => d.ref), rr]);
     if (note && note.trim()) await notify(ownerUid, 3, Number(pid) || 0, pname, 'yorumunu kaldırdı. Yöneticinin notu: ' + note.trim());
+  },
+  async riskSet(k, pid, id, st) {
+    if (DEMO) { const o = k === 'r' ? demoRaw.reviews.find(x => x.id === id) : demoRaw.products.find(x => String(x.id) === String(id)); if (o) o.qstate = st; return recompute(); }
+    const {db, FS} = fb;
+    await FS.updateDoc(k === 'r' ? FS.doc(db, 'products', String(pid), 'reviews', id) : FS.doc(db, 'products', String(pid)), {qstate: st});
   },
   async delProduct(pid) {
     if (DEMO) { demoRaw.products = demoRaw.products.filter(p => String(p.id) !== String(pid)); demoRaw.reviews = demoRaw.reviews.filter(r => String(r.pid) !== String(pid)); return recompute(); }
