@@ -1,6 +1,6 @@
 {
-  "name": "Tadı Nasıl? Yönetim Paneli",
-  "short_name": "Tadı Panel",
+  "name": "Raf Karnesi Yönetim Paneli",
+  "short_name": "Raf Panel",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

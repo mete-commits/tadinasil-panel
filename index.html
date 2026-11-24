@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0f14">
 <meta name="robots" content="noindex,nofollow">
-<title>Tadı Nasıl? • Yönetim Paneli</title>
+<title>Raf Karnesi • Yönetim Paneli</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -130,8 +130,8 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 
 <div id="gate" class="hidden">
   <div class="lbox">
-    <h1>Tadı <span style="color:var(--acc)">Nasıl?</span></h1>
-    <p>Erişim kodu</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 12</div>
+    <h1>Raf <span style="color:var(--acc)">Karnesi</span></h1>
+    <p>Erişim kodu</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 16</div>
     <input id="gc" type="password" placeholder="Kodu yaz" autocomplete="off" style="width:100%;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg2,#0f141b);color:var(--fg);font:inherit">
     <button class="btn" id="gb" style="width:100%">Devam</button>
     <div class="err" id="gerr"></div>
@@ -140,8 +140,8 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 
 <div id="login" class="hidden">
   <div class="lbox">
-    <h1>Tadı <span style="color:var(--acc)">Nasıl?</span></h1>
-    <p>Yönetim paneli</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 12</div>
+    <h1>Raf <span style="color:var(--acc)">Karnesi</span></h1>
+    <p>Yönetim paneli</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 16</div>
     <button class="btn" id="btnLogin" style="width:100%">Google ile giriş yap</button>
     <div style="margin:16px 0 10px;color:var(--mut);font-size:12px">veya e-posta ile</div>
     <input id="em" type="email" placeholder="E-posta" autocomplete="username" style="width:100%;margin-bottom:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--fg);font:inherit">
@@ -154,7 +154,7 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 <div id="app" class="hidden">
   <header>
     <div class="top">
-      <div class="logo">Tadı <b>Nasıl?</b> <span class="mono" style="color:var(--mut);font-weight:400">/ panel</span></div>
+      <div class="logo">Raf <b>Karnesi</b> <span class="mono" style="color:var(--mut);font-weight:400">/ panel</span></div>
       <div class="sp"></div>
       <div class="who" id="who"></div>
       
@@ -674,8 +674,20 @@ const HINT = '\n\nFirestore kurallarının son sürümünün yayınlandığında
 const warns = {};
 function warnSet(k, t) { if (t) warns[k] = t; else delete warns[k]; $('#warn').innerHTML = Object.values(warns).map(w => `<div class="warn">${esc(w)}</div>`).join(''); }
 function setLive(ok) { liveOk = ok; $('#liveDot').classList.toggle('off', !ok); setUpd(); }
+// Sağ üst: her saniye ilerleyen saat + son veri değişikliğinin ne kadar önce olduğu.
+// (Veriler canlı dinleniyor; bir şey değişmezse "son değişiklik" eskir, saat yine akar.)
+let lastChange = null;
+function agoShort(d) {
+  const s = Math.max(0, Math.round((Date.now() - d.getTime()) / 1000));
+  if (s < 5) return 'az önce';
+  if (s < 60) return s + ' sn önce';
+  if (s < 3600) return Math.floor(s / 60) + ' dk önce';
+  return Math.floor(s / 3600) + ' sa önce';
+}
 function setUpd() {
-  $('#upd').textContent = DEMO ? 'demo verisi' : !lastUpd ? 'bağlanıyor…' : (liveOk ? 'canlı' : 'bağlantı sorunu') + ' · ' + lastUpd.toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+  const now = new Date().toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+  $('#upd').textContent = DEMO ? 'demo verisi · ' + now : !lastUpd ? 'bağlanıyor…'
+    : (liveOk ? 'canlı' : 'bağlantı sorunu') + ' · ' + now + (lastChange ? ' · son değişiklik ' + agoShort(lastChange) : '');
 }
 function buildRaw() {
   if (DEMO) return demoRaw;
@@ -702,7 +714,7 @@ function startLive() {
   stopLive();
   const {db, FS} = fb, {collection, collectionGroup, onSnapshot, query, orderBy, limit} = FS;
   const sub = (q, key, map, label) => subs.push(onSnapshot(q, snap => {
-    raw[key] = snap.docs.map(map); warnSet(key); setLive(true); recompute();
+    raw[key] = snap.docs.map(map); warnSet(key); lastChange = new Date(); setLive(true); recompute();
   }, e => { setLive(false); warnSet(key, label + ' okunamadı: ' + (e.message || e) + (/permission/i.test(String(e.message || e)) ? HINT : '')); }));
   sub(collection(db, 'products'), 'products', mapProduct, 'Ürünler');
   sub(collectionGroup(db, 'reviews'), 'reviews', mapReview, 'Yorumlar');
@@ -747,6 +759,7 @@ const A = {
     const {db, FS} = fb, pr = FS.doc(db, 'products', String(pid)), refs = [];
     const rs = await FS.getDocs(FS.collection(pr, 'reviews'));
     for (const r of rs.docs) { const ph = await FS.getDocs(FS.collection(r.ref, 'photos')); refs.push(...ph.docs.map(d => d.ref), r.ref); }
+    const pp = await FS.getDocs(FS.collection(pr, 'photos')); refs.push(...pp.docs.map(d => d.ref));
     refs.push(pr); await delAll(refs);
   },
   async dismiss(id) {
@@ -847,7 +860,8 @@ document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () =>
 }));
 $('#btnRefresh').addEventListener('click', refresh);
 
-setInterval(() => { if (S) { setUpd(); if (tab === 'overview') render(); } }, 30000);
+setInterval(() => { if (S) setUpd(); }, 1000);
+setInterval(() => { if (S && tab === 'overview') recompute(); }, 15000);
 
 function showApp(name) {
   $('#login').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#who').textContent = name || '';
