@@ -131,7 +131,7 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 <div id="gate" class="hidden">
   <div class="lbox">
     <h1>Raf <span style="color:var(--acc)">Karnesi</span></h1>
-    <p>Erişim kodu</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 16</div>
+    <p>Erişim kodu</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 17</div>
     <input id="gc" type="password" placeholder="Kodu yaz" autocomplete="off" style="width:100%;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg2,#0f141b);color:var(--fg);font:inherit">
     <button class="btn" id="gb" style="width:100%">Devam</button>
     <div class="err" id="gerr"></div>
@@ -141,7 +141,7 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 <div id="login" class="hidden">
   <div class="lbox">
     <h1>Raf <span style="color:var(--acc)">Karnesi</span></h1>
-    <p>Yönetim paneli</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 16</div>
+    <p>Yönetim paneli</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 17</div>
     <button class="btn" id="btnLogin" style="width:100%">Google ile giriş yap</button>
     <div style="margin:16px 0 10px;color:var(--mut);font-size:12px">veya e-posta ile</div>
     <input id="em" type="email" placeholder="E-posta" autocomplete="username" style="width:100%;margin-bottom:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--fg);font:inherit">
@@ -171,6 +171,8 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
       <button class="tab" data-t="blocks">Engeller</button>
       <button class="tab" data-t="banned">Askıdakiler</button>
       <button class="tab" data-t="users">Kullanıcılar</button>
+      <button class="tab" data-t="catreq">Kategori başvuruları<span class="bd hidden" id="bdCat"></span></button>
+      <button class="tab" data-t="help">Yardım<span class="bd hidden" id="bdHelp"></span></button>
     </div>
   </header>
   <main>
@@ -496,6 +498,52 @@ function viewRisk() {
     <h3 style="margin:18px 0 8px">Puan incelemesi (%35–79) — yayında, puan bekliyor</h3>${mid.map(card).join('') || '<div class="empty">Bekleyen inceleme yok</div>'}`;
 }
 
+/* ── Kategori başvuruları ── */
+const normTr = t => String(t || '').toLocaleLowerCase('tr').replace(/[^a-zçğıöşü0-9]+/g, ' ').trim();
+const stLabel = {new: ['yeni', 'b'], ok: ['kabul edildi', 'g'], no: ['reddedildi', 'r'], answered: ['cevaplandı', 'g'], done: ['çözüldü', 'g']};
+const stPill = st => { const [t, c] = stLabel[st] || [st, '']; return `<span class="pill ${c}">${esc(t)}</span>`; };
+let catFilter = 'new', helpFilter = 'new';
+function viewCatReqs() {
+  const all = S.catReqs || [];
+  // aynı kategoriyi kaç kişi istedi? (yazım farkları birleştirilir)
+  const cnt = new Map(); all.forEach(r => { const k = normTr(r.cat); cnt.set(k, (cnt.get(k) || new Set()).add(r.uid)); });
+  const top = [...cnt.entries()].map(([k, v]) => [k, v.size]).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const l = all.filter(r => catFilter === 'all' || (catFilter === 'new' ? r.status === 'new' : r.status !== 'new'));
+  const card = r => `<div class="rep"><div class="t"><span class="mono">${fmtDT(r.time)}</span>${stPill(r.status)}
+      <span class="pill">${cnt.get(normTr(r.cat))?.size || 1} kişi istedi</span></div>
+    <div style="margin-top:6px;font-size:17px"><b>${esc(r.cat)}</b></div>
+    <div style="color:var(--mut);font-size:12px">${esc(r.user || 'bilinmiyor')}</div>
+    <blockquote>${esc(r.why)}</blockquote>
+    ${r.reply ? `<div style="font-size:12px;color:var(--mut);margin-top:6px">Gönderilen cevap: ${esc(r.reply)}</div>` : ''}
+    <div class="acts">
+      ${r.status === 'new' ? `<button class="btn sm" data-act="catok" data-id="${esc(r.id)}">Kabul et</button>
+      <button class="btn ghost sm" data-act="catno" data-id="${esc(r.id)}">Reddet</button>` : ''}
+      <button class="btn red sm" data-act="catdel" data-id="${esc(r.id)}">Sil</button></div></div>`;
+  return `<div class="meta">${nf(all.filter(r => r.status === 'new').length)} yeni · ${nf(all.length)} toplam başvuru ·
+      kabul/ret kararı başvurana bildirim olarak gider. Kabul edilen kategori uygulamaya bir güncellemeyle eklenir.</div>
+    ${top.length ? `<div style="margin:6px 0 10px">${top.map(([k, n]) => `<span class="pill">${esc(k)} × ${n}</span>`).join(' ')}</div>` : ''}
+    <div class="acts" style="margin-bottom:6px">${[['new', 'Yeni'], ['done', 'Sonuçlananlar'], ['all', 'Hepsi']].map(([k, t]) => `<button class="btn sm ${catFilter === k ? '' : 'ghost'}" data-act="catf" data-f="${k}">${t}</button>`).join('')}</div>
+    ${l.map(card).join('') || '<div class="empty">Burada başvuru yok 🎉</div>'}`;
+}
+
+/* ── Yardım mesajları ── */
+function viewHelps() {
+  const all = S.helps || [];
+  const l = all.filter(r => helpFilter === 'all' || (helpFilter === 'new' ? r.status === 'new' : r.status !== 'new'));
+  const card = r => `<div class="rep"><div class="t"><span class="mono">${fmtDT(r.time)}</span>${stPill(r.status)}<span class="pill b">${esc(r.topic)}</span></div>
+    <div style="margin-top:6px"><b>${esc(r.user || 'bilinmiyor')}</b>${r.phone ? ` <span style="color:var(--mut);font-size:12px">· ${esc(r.phone)}</span>` : ''}
+      ${r.uid && S.accounts.some(a => a.uid === r.uid) ? ` <button class="btn ghost sm" data-act="helpacc" data-uid="${esc(r.uid)}">Hesabı gör</button>` : ''}</div>
+    <blockquote style="white-space:pre-wrap">${esc(r.text)}</blockquote>
+    ${r.reply ? `<div style="font-size:12px;color:var(--mut);margin-top:6px">Gönderilen cevap: ${esc(r.reply)}</div>` : ''}
+    <div class="acts">
+      <button class="btn sm" data-act="helpre" data-id="${esc(r.id)}">${r.reply ? 'Tekrar cevapla' : 'Cevapla'}</button>
+      ${r.status !== 'done' ? `<button class="btn ghost sm" data-act="helpdone" data-id="${esc(r.id)}">Çözüldü</button>` : ''}
+      <button class="btn red sm" data-act="helpdel" data-id="${esc(r.id)}">Sil</button></div></div>`;
+  return `<div class="meta">${nf(all.filter(r => r.status === 'new').length)} cevap bekleyen · ${nf(all.length)} toplam mesaj · cevabın kullanıcıya uygulama içi bildirim olarak gider</div>
+    <div class="acts" style="margin-bottom:6px">${[['new', 'Cevap bekleyen'], ['done', 'Cevaplananlar'], ['all', 'Hepsi']].map(([k, t]) => `<button class="btn sm ${helpFilter === k ? '' : 'ghost'}" data-act="helpf" data-f="${k}">${t}</button>`).join('')}</div>
+    ${l.map(card).join('') || '<div class="empty">Burada mesaj yok 🎉</div>'}`;
+}
+
 function viewBanned() {
   const accBy = new Map(S.accounts.map(a => [a.uid, a]));
   const l = [...S.banned].sort((a, b) => (b.time || 0) - (a.time || 0));
@@ -524,9 +572,11 @@ function viewUsers() {
 
 function render() {
   if (!S) return;
-  const v = {overview: viewOverview, products: viewProducts, reviews: viewReviews, accounts: viewAccounts, risk: viewRisk, reports: viewReports, banned: viewBanned, users: viewUsers, blocks: viewBlocks}[tab];
+  const v = {overview: viewOverview, products: viewProducts, reviews: viewReviews, accounts: viewAccounts, risk: viewRisk, reports: viewReports, banned: viewBanned, users: viewUsers, blocks: viewBlocks, catreq: viewCatReqs, help: viewHelps}[tab];
   const nb = groupReports().length; const bd = $('#bdRep'); bd.textContent = nb; bd.classList.toggle('hidden', !nb);
   { const nr = riskItems().length; const b2 = $('#bdRisk'); b2.textContent = nr; b2.classList.toggle('hidden', !nr); }
+  { const nc = (S.catReqs || []).filter(r => r.status === 'new').length; const b3 = $('#bdCat'); b3.textContent = nc; b3.classList.toggle('hidden', !nc); }
+  { const nh = (S.helps || []).filter(r => r.status === 'new').length; const b4 = $('#bdHelp'); b4.textContent = nh; b4.classList.toggle('hidden', !nh); }
   $('#view').innerHTML = v();
   const bind = (id, ev, fn) => { const e = $(id); if (e) e.addEventListener(ev, fn); };
   bind('#pq', 'input', e => { pq = e.target.value; lim.products = 60; keepFocus(render, '#pq'); });
@@ -556,6 +606,34 @@ document.addEventListener('click', async e => {
   if (act === 'aipaste') { const r = await ask({title: 'AI yanıtını yapıştır', body: 'Promptu bir yapay zekaya yapıştırıp verdiği JSON yanıtını buraya yapıştır.', input: '{"results":[…]}', textarea: true, ok: 'Uygula'}); if (r.ok) { try { toast(parseAI(r.value) + ' şikâyet işlendi'); render(); } catch (x) { warnSet('ai', 'Yanıt okunamadı: ' + x.message); setTimeout(() => warnSet('ai'), 8000); } } return; }
   if (act === 'unban') { const r = await ask({title: 'Banı kaldır', body: 'Bu hesap yeniden giriş yapabilecek.', ok: 'Banı kaldır'}); if (r.ok) run(() => A.unban(d.uid), 'Ban kaldırıldı'); return; }
   if (act === 'ban') { const r = await ask({title: `“${d.name}” askıya alınsın mı?`, body: 'Kullanıcı çıkış yaptırılır ve giriş yapamaz. İsteğe bağlı bir not yazarsan kullanıcıya bildirim gider, boş bırakırsan gitmez.', input: 'Neden? (isteğe bağlı)', ok: 'Askıya al', danger: true}); if (r.ok) run(async () => { await A.ban(d.uid, d.name, r.value); $('#drawer').classList.add('hidden'); }, 'Hesap askıya alındı'); return; }
+  if (act === 'catf') { catFilter = d.f; render(); return; }
+  if (act === 'helpf') { helpFilter = d.f; render(); return; }
+  if (act === 'helpacc') { openAccount(d.uid); return; }
+  if (act === 'catok' || act === 'catno') {
+    const r0 = (S.catReqs || []).find(x => x.id === d.id); if (!r0) return;
+    const ok = act === 'catok';
+    const r = await ask({title: ok ? `“${r0.cat}” kabul edilsin mi?` : `“${r0.cat}” reddedilsin mi?`,
+      body: 'Başvurana bildirim gider. İstersen not ekle.', input: ok ? 'Not (isteğe bağlı, ör. hangi adla ekleneceği)' : 'Neden? (isteğe bağlı)', ok: ok ? 'Kabul et' : 'Reddet', danger: !ok});
+    if (r.ok) run(async () => {
+      const note = r.value.trim();
+      await A.setReq('categoryRequests', 'catReqs', d.id, {status: ok ? 'ok' : 'no', reply: note});
+      await notify(r0.uid, 7, 0, '', (ok ? `“${r0.cat}” kategori başvurunu kabul etti. Bir sonraki güncellemeyle eklenecek.` : `“${r0.cat}” kategori başvurunu şimdilik kabul etmedi.`) + (note ? ' Not: ' + note : ''));
+    }, ok ? 'Kabul edildi, bildirim gönderildi' : 'Reddedildi, bildirim gönderildi');
+    return;
+  }
+  if (act === 'catdel') { const r = await ask({title: 'Başvuru silinsin mi?', body: 'Başvurana bildirim gitmez.', ok: 'Sil', danger: true}); if (r.ok) run(() => A.delReq('categoryRequests', 'catReqs', d.id), 'Silindi'); return; }
+  if (act === 'helpre') {
+    const r0 = (S.helps || []).find(x => x.id === d.id); if (!r0) return;
+    const r = await ask({title: `${r0.user || 'Kullanıcı'} adlı kullanıcıya cevap`, body: r0.text.slice(0, 300), input: 'Cevabın (kullanıcıya bildirim olarak gider)', textarea: true, ok: 'Gönder'});
+    if (r.ok && r.value.trim()) run(async () => {
+      await A.setReq('helpRequests', 'helps', d.id, {status: 'answered', reply: r.value.trim()});
+      await notify(r0.uid, 6, 0, '', 'yardım mesajına cevap verdi: ' + r.value.trim());
+    }, 'Cevap gönderildi');
+    else if (r.ok) toast('Boş cevap gönderilmedi');
+    return;
+  }
+  if (act === 'helpdone') { run(() => A.setReq('helpRequests', 'helps', d.id, {status: 'done'}), 'Çözüldü olarak işaretlendi'); return; }
+  if (act === 'helpdel') { const r = await ask({title: 'Mesaj silinsin mi?', body: 'Geri alınamaz.', ok: 'Sil', danger: true}); if (r.ok) run(() => A.delReq('helpRequests', 'helps', d.id), 'Silindi'); return; }
   if (act === 'rkok') { run(() => A.riskSet(d.k, d.pid, d.id, 'ok'), 'Puan verildi'); return; }
   if (act === 'rkno') {
     const r = await ask({title: 'Puan verilmesin mi?', body: 'İçerik gizlenir ve hesaba uyarı bildirimi gider. Not yazabilirsin.', input: 'Not (isteğe bağlı)', ok: 'Puan verme', danger: true});
@@ -655,7 +733,11 @@ function demoData() {
   reviews[12].reports = 7; reviews[40].reports = 2; reviews[77].reports = 1;
   const blocks = []; const bk = (to, n, off) => { for (let k = 0; k < n; k++) { const a = accounts[(off + k) % accounts.length]; blocks.push({id: 'b' + blocks.length, blockerUid: a.uid, blockerName: a.name, blockedUid: accounts[to].uid, blockedName: accounts[to].name, time: new Date(Date.now() - 3600e3 * (k * 5 + to))}); } };
   bk(3, 16, 20); bk(7, 4, 30); bk(11, 2, 50);
-  return {blocks, products, reviews, accounts, reports, banned: [{id: 'u9', name: accounts[9].name, reason: 'Spam', time: new Date(Date.now() - 86400e3 * 3)}, {id: 'u14', name: accounts[14].name, reason: '', time: new Date(Date.now() - 86400e3 * 8)}], dau, totals: {accounts: 74, taste: 21, pvotes: 640}};
+  const catReqs = [['Bebek ürünleri', 'Bebek maması ve bezleri için ayrı kategori olsa çok iyi olur, sürekli arıyorum.'], ['Bebek Ürünleri', 'Mama ve ıslak mendil yorumlarını bir arada görmek isterim.'], ['Temizlik', 'Deterjan ve bulaşık tableti yorumları için.'], ['Evcil hayvan', 'Kedi maması fiyatlarını karşılaştırmak istiyorum.']]
+    .map(([cat, why], i) => ({id: 'c' + i, uid: accounts[i + 3].uid, user: accounts[i + 3].name, cat, why, time: new Date(Date.now() - 3600e3 * (5 + i * 7)), status: i === 3 ? 'ok' : 'new', reply: ''}));
+  const helps = [['Uygulama hatası', 'Ürün sayfasını açınca fotoğraf bazen yüklenmiyor, gri ekran kalıyor. İnternetim iyi. Geri çıkıp girince düzeliyor.', 'Redmi Note 9'], ['Hesabım', 'Telefon numaramı değiştirdim, eski numarayla girdiğim hesaba nasıl ulaşabilirim? Yorumlarım kaybolmasın.', ''], ['Öneri', 'Ürünleri fiyata göre sıralama seçeneği olsa harika olur, özellikle en ucuz marketi görmek için.', 'Samsung A12']]
+    .map(([topic, text, phone], i) => ({id: 'h' + i, uid: accounts[i + 10].uid, user: accounts[i + 10].name, topic, text, phone, time: new Date(Date.now() - 3600e3 * (2 + i * 9)), status: i === 2 ? 'answered' : 'new', reply: i === 2 ? 'Teşekkürler, listemize aldık!' : ''}));
+  return {catReqs, helps, blocks, products, reviews, accounts, reports, banned: [{id: 'u9', name: accounts[9].name, reason: 'Spam', time: new Date(Date.now() - 86400e3 * 3)}, {id: 'u14', name: accounts[14].name, reason: '', time: new Date(Date.now() - 86400e3 * 8)}], dau, totals: {accounts: 74, taste: 21, pvotes: 640}};
 }
 
 /* ── gerçek mod: canlı (onSnapshot) dinleme ── */
@@ -664,11 +746,13 @@ const mapReview = d => {const m = d.data(), v = Object.values(m.votes || {}); re
   market: m.market || '', city: m.city || '', text: m.text || '', date: ts(m.createdAt) || ts(m.date), photos: Number(m.photos) || 0, reports: (m.reports || []).length,
   up: v.filter(x => x === 1).length, down: v.filter(x => x === -1).length, qscore: Number(m.qscore) || 0, qstate: m.qstate || '', qwhy: m.qwhy || []};};
 const mapAccount = d => {const m = d.data(); return {uid: d.id, name: m.name || '', provider: m.provider || '', email: m.email || '', phone: m.phone || '', createdAt: ts(m.createdAt), lastSeen: ts(m.lastSeen), days: m.days || []};};
+const mapCatReq = d => {const m = d.data(); return {id: d.id, uid: m.uid || '', user: m.user || '', cat: m.cat || '', why: m.why || '', time: ts(m.time), status: m.status || 'new', reply: m.reply || ''};};
+const mapHelp = d => {const m = d.data(); return {id: d.id, uid: m.uid || '', user: m.user || '', topic: m.topic || '', text: m.text || '', phone: m.phone || '', time: ts(m.time), status: m.status || 'new', reply: m.reply || ''};};
 const mapReport = d => {const m = d.data(); return {id: d.id, reporter: m.reporter || '', reporterUid: m.reporterUid || '', reviewId: m.reviewId || '', productId: m.productId, productName: m.productName || '', reviewer: m.reviewer || '', reviewerUid: m.reviewerUid || '', reason: m.reason || '', excerpt: m.excerpt || '', time: ts(m.time)};};
 const mapBlock = d => {const m = d.data(); return {id: d.id, blockerUid: m.blockerUid || '', blockerName: m.blockerName || '', blockedUid: m.blockedUid || '', blockedName: m.blockedName || '', time: ts(m.time)};};
 const mapBanned = d => {const m = d.data(); return {id: d.id, name: m.name || '', reason: m.reason || '', time: ts(m.time)};};
 
-const raw = {products: [], reviews: [], accounts: [], reports: [], banned: [], blocks: [], taste: 0, pvotes: 0};
+const raw = {products: [], reviews: [], accounts: [], reports: [], banned: [], blocks: [], catReqs: [], helps: [], taste: 0, pvotes: 0};
 let demoRaw = null, subs = [], countT = null, recT = null, lastUpd = null, liveOk = true;
 const HINT = '\n\nFirestore kurallarının son sürümünün yayınlandığından ve hesabının admins koleksiyonunda olduğundan emin ol.';
 const warns = {};
@@ -722,6 +806,8 @@ function startLive() {
   sub(collection(db, 'reports'), 'reports', mapReport, 'Şikâyetler');
   sub(collection(db, 'banned'), 'banned', mapBanned, 'Askıdaki hesaplar');
   sub(collectionGroup(db, 'blocks'), 'blocks', mapBlock, 'Engeller');
+  sub(query(collection(db, 'categoryRequests'), orderBy('time', 'desc'), limit(1000)), 'catReqs', mapCatReq, 'Kategori başvuruları');
+  sub(query(collection(db, 'helpRequests'), orderBy('time', 'desc'), limit(1000)), 'helps', mapHelp, 'Yardım mesajları');
   counts(); countT = setInterval(counts, 60000);
 }
 function stopLive() { subs.forEach(u => { try { u(); } catch {} }); subs = []; clearInterval(countT); S = null; }
@@ -762,6 +848,14 @@ const A = {
     const pp = await FS.getDocs(FS.collection(pr, 'photos')); refs.push(...pp.docs.map(d => d.ref));
     refs.push(pr); await delAll(refs);
   },
+  async setReq(col, key, id, data) {
+    if (DEMO) { const o = demoRaw[key].find(x => x.id === id); if (o) Object.assign(o, data); return recompute(); }
+    await fb.FS.updateDoc(fb.FS.doc(fb.db, col, id), {...data, ...(data.reply !== undefined ? {repliedAt: fb.FS.Timestamp.now()} : {})});
+  },
+  async delReq(col, key, id) {
+    if (DEMO) { demoRaw[key] = demoRaw[key].filter(x => x.id !== id); return recompute(); }
+    await fb.FS.deleteDoc(fb.FS.doc(fb.db, col, id));
+  },
   async dismiss(id) {
     if (DEMO) { demoRaw.reports = demoRaw.reports.filter(r => r.id !== id); return recompute(); }
     await fb.FS.deleteDoc(fb.FS.doc(fb.db, 'reports', id));
@@ -772,7 +866,7 @@ async function delAll(refs) {
   for (let i = 0; i < refs.length; i += 400) { const b = FS.writeBatch(db); refs.slice(i, i + 400).forEach(r => b.delete(r)); await b.commit(); }
 }
 async function notify(uid, type, pid, pname, text) {
-  if (!uid || String(uid).startsWith('sample')) return;
+  if (DEMO || !uid || String(uid).startsWith('sample')) return;
   const {db, FS, auth} = fb;
   await FS.addDoc(FS.collection(db, 'users', uid, 'notifs'), {type, productId: pid, productName: pname, actor: 'Yönetici', actorUid: auth.currentUser.uid, text, time: FS.Timestamp.now(), unread: true});
 }

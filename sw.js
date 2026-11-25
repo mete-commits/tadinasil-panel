@@ -1,7 +1,7 @@
 // Raf Karnesi panel – service worker
 // Ağ öncelikli: internet varsa her zaman en güncel dosya gelir, önbellek sadece
 // internet yokken kullanılır. Sürüm değişince eski önbellekler silinir.
-const CACHE = 'raf-panel-v16';
+const CACHE = 'raf-panel-v17';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon.svg'];
 
 self.addEventListener('install', e => {
