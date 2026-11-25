@@ -110,6 +110,7 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 .btn.red{background:#3a1717;color:#ffb4b4;border:1px solid #6b2323}
 .btn.ghost.sm{padding:6px 11px}
 .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.phs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.phs img{width:150px;height:150px;object-fit:cover;border-radius:10px;border:1px solid var(--line);cursor:zoom-in;background:var(--bg2)}
 .rep{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px}
 .rep .t{display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:var(--mut);font-size:12px}
 .rep blockquote{margin:8px 0 0;padding:8px 10px;border-left:3px solid var(--line);color:#d5dee8;word-break:break-word;background:var(--bg2);border-radius:0 8px 8px 0}
@@ -131,7 +132,7 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 <div id="gate" class="hidden">
   <div class="lbox">
     <h1>Raf <span style="color:var(--acc)">Karnesi</span></h1>
-    <p>Erişim kodu</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 17</div>
+    <p>Erişim kodu</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 19</div>
     <input id="gc" type="password" placeholder="Kodu yaz" autocomplete="off" style="width:100%;margin-bottom:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg2,#0f141b);color:var(--fg);font:inherit">
     <button class="btn" id="gb" style="width:100%">Devam</button>
     <div class="err" id="gerr"></div>
@@ -141,7 +142,7 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
 <div id="login" class="hidden">
   <div class="lbox">
     <h1>Raf <span style="color:var(--acc)">Karnesi</span></h1>
-    <p>Yönetim paneli</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 17</div>
+    <p>Yönetim paneli</p><div style="position:fixed;bottom:8px;right:10px;font-size:11px;color:var(--mut)">sürüm 19</div>
     <button class="btn" id="btnLogin" style="width:100%">Google ile giriş yap</button>
     <div style="margin:16px 0 10px;color:var(--mut);font-size:12px">veya e-posta ile</div>
     <input id="em" type="email" placeholder="E-posta" autocomplete="username" style="width:100%;margin-bottom:8px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--fg);font:inherit">
@@ -171,6 +172,7 @@ td.num,th.num{text-align:right;font-family:var(--mono)}
       <button class="tab" data-t="blocks">Engeller</button>
       <button class="tab" data-t="banned">Askıdakiler</button>
       <button class="tab" data-t="users">Kullanıcılar</button>
+      <button class="tab" data-t="photos">Fotoğraflar<span class="bd hidden" id="bdPh"></span></button>
       <button class="tab" data-t="catreq">Kategori başvuruları<span class="bd hidden" id="bdCat"></span></button>
       <button class="tab" data-t="help">Yardım<span class="bd hidden" id="bdHelp"></span></button>
     </div>
@@ -434,15 +436,25 @@ function viewAccounts() {
 
 const verdictCls = {ihlal: 'bad', uygun: 'ok', belirsiz: ''};
 const actLabel = {yorumu_kaldir: 'Yorumu kaldır', yoksay: 'Şikâyeti yoksay', uyar_ve_kaldir: 'Yorumu kaldır + uyarı notu', banla: 'Kullanıcıyı askıya al', insan_incelesin: 'Elle incele'};
+const repKey = r => r.reviewId || (r.productId != null && r.productId !== '' ? 'p' + r.productId : r.id);
 function groupReports() {
   const m = new Map();
-  S.reports.forEach(r => { const k = r.reviewId || r.id; (m.get(k) || m.set(k, []).get(k)).push(r); });
+  S.reports.forEach(r => { const k = repKey(r); (m.get(k) || m.set(k, []).get(k)).push(r); });
   return [...m.values()].map(g => g.sort((x, y) => (y.time || 0) - (x.time || 0))).sort((x, y) => (y[0].time || 0) - (x[0].time || 0));
 }
 function viewReports() {
   const groups = groupReports();
   const bannedSet = new Set(S.banned.map(b => b.id));
+  const pcard = g => {
+    const r = g[0], p = S.pById.get(String(r.productId));
+    return `<div class="rep"><div class="t"><span class="mono">${fmtDT(r.time)}</span><span class="pill r">⚑ ${g.length} şikâyet</span><span class="pill b">Ürün fotoğrafı</span></div>
+      <div style="margin-top:6px"><b>${esc(r.productName)}</b>${p ? '' : ' <span style="color:var(--yel)">(ürün zaten silinmiş)</span>'}</div>
+      ${p ? `<div class="phs" id="ph-p${esc(r.productId)}"><button class="btn ghost sm" data-act="phload" data-k="p" data-pid="${esc(r.productId)}">Fotoğrafları göster</button></div>` : ''}
+      <div class="acts">${p ? `<button class="btn red sm" data-act="phpdel" data-pid="${esc(r.productId)}">Ürün fotoğraflarını sil</button><button class="btn red sm" data-act="delprod" data-pid="${esc(r.productId)}">Ürünü sil</button>` : ''}
+        <button class="btn ghost sm" data-act="dismiss" data-id="${esc(r.id)}">Yoksay (${g.length})</button></div></div>`;
+  };
   const card = g => {
+    if (!g[0].reviewId) return pcard(g);
     const r = g[0], rv = S.reviews.find(x => x.id === r.reviewId);
     const n = g.length, auto = n >= HIDE_AT;
     const rc = r.reviewerUid ? S.reports.filter(x => x.reviewerUid === r.reviewerUid).length : 0;
@@ -498,11 +510,37 @@ function viewRisk() {
     <h3 style="margin:18px 0 8px">Puan incelemesi (%35–79) — yayında, puan bekliyor</h3>${mid.map(card).join('') || '<div class="empty">Bekleyen inceleme yok</div>'}`;
 }
 
+/* ── Fotoğraflar: son yüklenen ürün ve yorum fotoğrafları ── */
+const phSeen = () => Number(store.get('tp_ph_seen') || 0);
+function photoItems() {
+  const prods = S.products.filter(p => p.createdBy !== 'sample').map(p => ({k: 'p', id: p.id, pid: p.id, time: p.createdAt, chk: p.phCheck, title: p.name, who: (S.accounts.find(a => a.uid === p.createdBy) || {}).name || '', thumb: p.thumb}));
+  const revs = S.reviews.filter(r => r.photos > 0 && !String(r.uid).startsWith('sample')).map(r => ({k: 'r', id: r.id, pid: r.pid, uid: r.uid, time: r.date, chk: r.phCheck, title: S.pById.get(String(r.pid))?.name || '#' + r.pid, who: r.user, text: r.text, n: r.photos}));
+  return [...prods, ...revs].filter(x => x.time).sort((a, b) => b.time - a.time);
+}
+let phFilter = 'all';
+function viewPhotos() {
+  const every = photoItems(), seen = phSeen();
+  const unchk = every.filter(x => !x.chk);
+  const all = phFilter === 'unchecked' ? unchk : every, l = all.slice(0, lim.photos || 30);
+  const card = x => `<div class="rep"><div class="t"><span class="mono">${fmtDT(x.time)}</span>${x.time > seen ? '<span class="pill b">yeni</span>' : ''}${x.chk ? '<span class="pill g">otomatik kontrol ✓</span>' : '<span class="pill r">otomatik kontrol yok</span>'}<span class="pill">${x.k === 'p' ? 'Ürün' : 'Yorum · 📷 ' + x.n}</span></div>
+    <div style="margin-top:6px"><b>${esc(x.title)}</b> <span style="color:var(--mut);font-size:12px">· ${esc(x.who || 'bilinmiyor')}</span></div>
+    ${x.text ? `<div style="color:var(--mut);font-size:12px;margin-top:4px">${esc(x.text.slice(0, 140))}</div>` : ''}
+    <div class="phs" id="ph-${x.k}${esc(x.id)}">${x.thumb ? `<img src="data:image/png;base64,${x.thumb}" alt="">` : ''}<button class="btn ghost sm" data-act="phload" data-k="${x.k}" data-pid="${esc(x.pid)}" data-id="${esc(x.id)}">Fotoğrafları göster</button></div>
+    <div class="acts">${x.k === 'p' ? `<button class="btn red sm" data-act="phpdel" data-pid="${esc(x.pid)}">Ürün fotoğraflarını sil</button><button class="btn red sm" data-act="delprod" data-pid="${esc(x.pid)}">Ürünü sil</button>`
+      : `<button class="btn red sm" data-act="phrdel" data-pid="${esc(x.pid)}" data-id="${esc(x.id)}">Yorumun fotoğraflarını sil</button><button class="btn red sm" data-act="delrev" data-pid="${esc(x.pid)}" data-rid="${esc(x.id)}">Yorumu sil</button>`}</div></div>`;
+  return `<div class="meta">${nf(every.filter(x => x.time > seen).length)} yeni · ${nf(unchk.length)} otomatik kontrol edilmemiş · Android 8.0 ve üzeri telefonlarda fotoğraflar yüklenmeden önce otomatik kontrol edilir; eski telefonlardan, Raf Ekle'den ve eski sürümden gelenler kontrol edilmemiştir, onlara buradan göz at</div>
+    <div class="acts" style="margin-bottom:6px">${[['all', 'Tüm fotoğraflar'], ['unchecked', `Otomatik kontrol edilmeyenler (${nf(unchk.length)})`]].map(([k, t]) => `<button class="btn sm ${phFilter === k ? '' : 'ghost'}" data-act="phf" data-f="${k}">${t}</button>`).join('')}
+      <button class="btn ghost sm" data-act="phseen">Hepsini görüldü say</button></div>
+    ${l.map(card).join('') || '<div class="empty">Henüz fotoğraf yok</div>'}
+    ${all.length > l.length ? '<button class="more" id="morePh">Daha fazla göster</button>' : ''}`;
+}
+
 /* ── Kategori başvuruları ── */
 const normTr = t => String(t || '').toLocaleLowerCase('tr').replace(/[^a-zçğıöşü0-9]+/g, ' ').trim();
 const stLabel = {new: ['yeni', 'b'], ok: ['kabul edildi', 'g'], no: ['reddedildi', 'r'], answered: ['cevaplandı', 'g'], done: ['çözüldü', 'g']};
 const stPill = st => { const [t, c] = stLabel[st] || [st, '']; return `<span class="pill ${c}">${esc(t)}</span>`; };
 let catFilter = 'new', helpFilter = 'new';
+const CAT_PTS = 4; // uygulamadaki kPtsCategory ile aynı
 function viewCatReqs() {
   const all = S.catReqs || [];
   // aynı kategoriyi kaç kişi istedi? (yazım farkları birleştirilir)
@@ -520,7 +558,7 @@ function viewCatReqs() {
       <button class="btn ghost sm" data-act="catno" data-id="${esc(r.id)}">Reddet</button>` : ''}
       <button class="btn red sm" data-act="catdel" data-id="${esc(r.id)}">Sil</button></div></div>`;
   return `<div class="meta">${nf(all.filter(r => r.status === 'new').length)} yeni · ${nf(all.length)} toplam başvuru ·
-      kabul/ret kararı başvurana bildirim olarak gider. Kabul edilen kategori uygulamaya bir güncellemeyle eklenir.</div>
+      kabul/ret kararı başvurana bildirim olarak gider, kabul edilene +${CAT_PTS} puan verilir. Kabul edilen kategori uygulamaya bir güncellemeyle eklenir.</div>
     ${top.length ? `<div style="margin:6px 0 10px">${top.map(([k, n]) => `<span class="pill">${esc(k)} × ${n}</span>`).join(' ')}</div>` : ''}
     <div class="acts" style="margin-bottom:6px">${[['new', 'Yeni'], ['done', 'Sonuçlananlar'], ['all', 'Hepsi']].map(([k, t]) => `<button class="btn sm ${catFilter === k ? '' : 'ghost'}" data-act="catf" data-f="${k}">${t}</button>`).join('')}</div>
     ${l.map(card).join('') || '<div class="empty">Burada başvuru yok 🎉</div>'}`;
@@ -572,9 +610,10 @@ function viewUsers() {
 
 function render() {
   if (!S) return;
-  const v = {overview: viewOverview, products: viewProducts, reviews: viewReviews, accounts: viewAccounts, risk: viewRisk, reports: viewReports, banned: viewBanned, users: viewUsers, blocks: viewBlocks, catreq: viewCatReqs, help: viewHelps}[tab];
+  const v = {overview: viewOverview, products: viewProducts, reviews: viewReviews, accounts: viewAccounts, risk: viewRisk, reports: viewReports, banned: viewBanned, users: viewUsers, blocks: viewBlocks, catreq: viewCatReqs, help: viewHelps, photos: viewPhotos}[tab];
   const nb = groupReports().length; const bd = $('#bdRep'); bd.textContent = nb; bd.classList.toggle('hidden', !nb);
   { const nr = riskItems().length; const b2 = $('#bdRisk'); b2.textContent = nr; b2.classList.toggle('hidden', !nr); }
+  { const np = photoItems().filter(x => x.time > phSeen() && !x.chk).length; const b5 = $('#bdPh'); b5.textContent = np > 99 ? '99+' : np; b5.classList.toggle('hidden', !np); }
   { const nc = (S.catReqs || []).filter(r => r.status === 'new').length; const b3 = $('#bdCat'); b3.textContent = nc; b3.classList.toggle('hidden', !nc); }
   { const nh = (S.helps || []).filter(r => r.status === 'new').length; const b4 = $('#bdHelp'); b4.textContent = nh; b4.classList.toggle('hidden', !nh); }
   $('#view').innerHTML = v();
@@ -589,6 +628,7 @@ function render() {
   bind('#moreP', 'click', () => { lim.products += 100; render(); });
   bind('#moreR', 'click', () => { lim.reviews += 100; render(); });
   bind('#moreA', 'click', () => { lim.accounts += 100; render(); });
+  bind('#morePh', 'click', () => { lim.photos = (lim.photos || 30) + 30; render(); });
   document.querySelectorAll('tr[data-p]').forEach(tr => tr.addEventListener('click', e => { if (!e.target.closest('[data-act]')) openProduct(tr.dataset.p); }));
   document.querySelectorAll('tr[data-a]').forEach(tr => tr.addEventListener('click', e => { if (!e.target.closest('[data-act]')) openAccount(tr.dataset.a); }));
 }
@@ -606,6 +646,19 @@ document.addEventListener('click', async e => {
   if (act === 'aipaste') { const r = await ask({title: 'AI yanıtını yapıştır', body: 'Promptu bir yapay zekaya yapıştırıp verdiği JSON yanıtını buraya yapıştır.', input: '{"results":[…]}', textarea: true, ok: 'Uygula'}); if (r.ok) { try { toast(parseAI(r.value) + ' şikâyet işlendi'); render(); } catch (x) { warnSet('ai', 'Yanıt okunamadı: ' + x.message); setTimeout(() => warnSet('ai'), 8000); } } return; }
   if (act === 'unban') { const r = await ask({title: 'Banı kaldır', body: 'Bu hesap yeniden giriş yapabilecek.', ok: 'Banı kaldır'}); if (r.ok) run(() => A.unban(d.uid), 'Ban kaldırıldı'); return; }
   if (act === 'ban') { const r = await ask({title: `“${d.name}” askıya alınsın mı?`, body: 'Kullanıcı çıkış yaptırılır ve giriş yapamaz. İsteğe bağlı bir not yazarsan kullanıcıya bildirim gider, boş bırakırsan gitmez.', input: 'Neden? (isteğe bağlı)', ok: 'Askıya al', danger: true}); if (r.ok) run(async () => { await A.ban(d.uid, d.name, r.value); $('#drawer').classList.add('hidden'); }, 'Hesap askıya alındı'); return; }
+  if (act === 'phf') { phFilter = d.f; lim.photos = 30; render(); return; }
+  if (act === 'phseen') { store.set('tp_ph_seen', String(Date.now())); render(); return; }
+  if (act === 'phload') {
+    const box = $('#ph-' + d.k + (d.k === 'p' ? d.pid : d.id)) || b.parentElement; b.textContent = 'Yükleniyor…'; b.disabled = true;
+    try {
+      const list = await A.loadPhotos(d.k, d.pid, d.id);
+      b.remove();
+      box.insertAdjacentHTML('beforeend', list.length ? list.map(x => `<img src="data:image/jpeg;base64,${x}" alt="">`).join('') : '<span style="color:var(--mut);font-size:12px">Büyük fotoğraf yok</span>');
+    } catch (x) { b.textContent = 'Yüklenemedi'; }
+    return;
+  }
+  if (act === 'phpdel') { const r = await ask({title: 'Ürünün fotoğrafları silinsin mi?', body: 'Ürün kalır, sadece fotoğrafları ve küçük resmi silinir.', ok: 'Sil', danger: true}); if (r.ok) run(() => A.delProductPhotos(d.pid), 'Ürün fotoğrafları silindi'); return; }
+  if (act === 'phrdel') { const r = await ask({title: 'Yorumun fotoğrafları silinsin mi?', body: 'Yorum kalır, sadece fotoğrafları silinir.', ok: 'Sil', danger: true}); if (r.ok) run(() => A.delReviewPhotos(d.pid, d.id), 'Yorum fotoğrafları silindi'); return; }
   if (act === 'catf') { catFilter = d.f; render(); return; }
   if (act === 'helpf') { helpFilter = d.f; render(); return; }
   if (act === 'helpacc') { openAccount(d.uid); return; }
@@ -617,7 +670,8 @@ document.addEventListener('click', async e => {
     if (r.ok) run(async () => {
       const note = r.value.trim();
       await A.setReq('categoryRequests', 'catReqs', d.id, {status: ok ? 'ok' : 'no', reply: note});
-      await notify(r0.uid, 7, 0, '', (ok ? `“${r0.cat}” kategori başvurunu kabul etti. Bir sonraki güncellemeyle eklenecek.` : `“${r0.cat}” kategori başvurunu şimdilik kabul etmedi.`) + (note ? ' Not: ' + note : ''));
+      if (ok) await A.catReward(r0);
+      await notify(r0.uid, 7, 0, '', (ok ? `“${r0.cat}” kategori başvurunu kabul etti ve sana +${CAT_PTS} puan verdi. Kategori bir sonraki güncellemeyle eklenecek.` : `“${r0.cat}” kategori başvurunu şimdilik kabul etmedi.`) + (note ? ' Not: ' + note : ''));
     }, ok ? 'Kabul edildi, bildirim gönderildi' : 'Reddedildi, bildirim gönderildi');
     return;
   }
@@ -647,7 +701,7 @@ document.addEventListener('click', async e => {
   }
   if (act === 'riskx') { const a = riskDis(); a.push(d.uid); store.set('tp_risk_dis', JSON.stringify(a)); render(); return; }
   if (act === 'seeblocks') { tab = 'blocks'; document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.t === 'blocks')); render(); window.scrollTo(0, 0); return; }
-  if (act === 'dismiss') { const rep = S.reports.find(x => x.id === d.id); const ids = S.reports.filter(x => rep && (x.reviewId || x.id) === (rep.reviewId || rep.id)).map(x => x.id); run(async () => { for (const i of ids) await A.dismiss(i); }, 'Şikâyetler kapatıldı'); return; }
+  if (act === 'dismiss') { const rep = S.reports.find(x => x.id === d.id); const ids = S.reports.filter(x => rep && repKey(x) === repKey(rep)).map(x => x.id); run(async () => { for (const i of ids) await A.dismiss(i); }, 'Şikâyetler kapatıldı'); return; }
   if (act === 'repdel') {
     const rep = S.reports.find(x => x.id === d.id), rv = rep && S.reviews.find(x => x.id === rep.reviewId); if (!rep || !rv) return;
     const r = await ask({title: 'Yorum silinsin mi?', body: 'İsteğe bağlı not yazarsan yorum sahibine bildirim gider.', input: 'Not (isteğe bağlı)', ok: 'Yorumu sil', danger: true});
@@ -668,6 +722,8 @@ document.addEventListener('click', async e => {
     return;
   }
 });
+
+document.addEventListener('click', e => { const im = e.target.closest('.phs img'); if (im) openSheet(`<button class="ib" data-x>← Kapat</button><img src="${im.src}" style="width:100%;border-radius:12px;margin-top:10px">`); });
 
 /* ─────────────  çekmece  ───────────── */
 function openSheet(html) { $('#sheet').innerHTML = html; $('#drawer').classList.remove('hidden'); $('#sheet').scrollTop = 0; }
@@ -721,7 +777,7 @@ function demoData() {
     const a = pick(accounts), p = pick(products);
     return {id: 'r' + i, pid: p.id, uid: a.uid, user: a.name, rating: 1 + Math.floor(rnd() * 9) / 2 + (rnd() > .55 ? 0.5 : 0), price: Math.round(20 + rnd() * 80), market: pick(markets), city: pick(cities),
       text: pick(['Çok lezzetli, tekrar alırım.', 'Fiyatına göre idare eder.', 'Tadı beklediğim gibi değildi.', 'Aile boyu aldık, çocuklar bayıldı!', 'Biraz tuzlu ama fena değil.', 'Fiyat performans ürünü.', 'Bir daha almam.', 'Market indiriminde aldım, güzel.']),
-      date: new Date(Date.now() - Math.pow(rnd(), 1.6) * 40 * 86400000), photos: rnd() > .8 ? 1 : 0, reports: rnd() > .96 ? 1 : 0, up: Math.floor(rnd() * 9), down: Math.floor(rnd() * 3)};
+      date: new Date(Date.now() - Math.pow(rnd(), 1.6) * 40 * 86400000), photos: rnd() > .8 ? 1 : 0, phCheck: rnd() > .3, reports: rnd() > .96 ? 1 : 0, up: Math.floor(rnd() * 9), down: Math.floor(rnd() * 3)};
   });
   [[4,'high',92,['rastgele harf dizisi','çok hızlı yazım']],[9,'high',85,['bağlantı içeriyor','kopyala-yapıştır']],[15,'mid',52,['kısa ve anlamsız','tekrar eden harfler']],[22,'mid',41,['çok büyük harf']],[30,'mid',60,['kısa sürede çok yorum']]].forEach(([i,st,sc,w]) => Object.assign(reviews[i], {qstate: st, qscore: sc, qwhy: w, text: st === 'high' ? 'asdfghjkl qwerty zxcv' : reviews[i].text}));
   Object.assign(products[3], {qstate: 'mid', qscore: 47, qwhy: ['tanınmayan kelimeler']});
@@ -741,9 +797,9 @@ function demoData() {
 }
 
 /* ── gerçek mod: canlı (onSnapshot) dinleme ── */
-const mapProduct = d => {const m = d.data(); return {id: d.id, name: m.name || '', brand: m.brand || '', cats: m.categories || [], createdAt: ts(m.createdAt), createdBy: m.createdBy || '', barcode: m.barcode || '', qscore: Number(m.qscore) || 0, qstate: m.qstate || '', qwhy: m.qwhy || []};};
+const mapProduct = d => {const m = d.data(); return {id: d.id, name: m.name || '', brand: m.brand || '', cats: m.categories || [], createdAt: ts(m.createdAt), createdBy: m.createdBy || '', barcode: m.barcode || '', qscore: Number(m.qscore) || 0, qstate: m.qstate || '', qwhy: m.qwhy || [], thumb: m.thumb || '', phCheck: m.phCheck === true};};
 const mapReview = d => {const m = d.data(), v = Object.values(m.votes || {}); return {id: d.id, pid: m.productId, uid: m.uid || '', user: m.user || '', rating: Number(m.rating) || 0, price: Number(m.price) || 0,
-  market: m.market || '', city: m.city || '', text: m.text || '', date: ts(m.createdAt) || ts(m.date), photos: Number(m.photos) || 0, reports: (m.reports || []).length,
+  market: m.market || '', city: m.city || '', text: m.text || '', date: ts(m.createdAt) || ts(m.date), photos: Number(m.photos) || 0, phCheck: m.phCheck === true, reports: (m.reports || []).length,
   up: v.filter(x => x === 1).length, down: v.filter(x => x === -1).length, qscore: Number(m.qscore) || 0, qstate: m.qstate || '', qwhy: m.qwhy || []};};
 const mapAccount = d => {const m = d.data(); return {uid: d.id, name: m.name || '', provider: m.provider || '', email: m.email || '', phone: m.phone || '', createdAt: ts(m.createdAt), lastSeen: ts(m.lastSeen), days: m.days || []};};
 const mapCatReq = d => {const m = d.data(); return {id: d.id, uid: m.uid || '', user: m.user || '', cat: m.cat || '', why: m.why || '', time: ts(m.time), status: m.status || 'new', reply: m.reply || ''};};
@@ -847,6 +903,33 @@ const A = {
     for (const r of rs.docs) { const ph = await FS.getDocs(FS.collection(r.ref, 'photos')); refs.push(...ph.docs.map(d => d.ref), r.ref); }
     const pp = await FS.getDocs(FS.collection(pr, 'photos')); refs.push(...pp.docs.map(d => d.ref));
     refs.push(pr); await delAll(refs);
+  },
+  async loadPhotos(k, pid, id) {
+    if (DEMO) return [];
+    const {db, FS} = fb;
+    const ref = k === 'p' ? FS.collection(db, 'products', String(pid), 'photos') : FS.collection(db, 'products', String(pid), 'reviews', id, 'photos');
+    const snap = await FS.getDocs(ref);
+    return snap.docs.map(x => x.data()).sort((a, b) => (Number(a.i) || 0) - (Number(b.i) || 0)).map(x => x.b).filter(Boolean);
+  },
+  async delProductPhotos(pid) {
+    if (DEMO) { const p = demoRaw.products.find(x => String(x.id) === String(pid)); if (p) p.thumb = ''; return recompute(); }
+    const {db, FS} = fb, pr = FS.doc(db, 'products', String(pid));
+    const pp = await FS.getDocs(FS.collection(pr, 'photos'));
+    await delAll(pp.docs.map(x => x.ref));
+    await FS.updateDoc(pr, {thumb: FS.deleteField()});
+  },
+  async delReviewPhotos(pid, rid) {
+    if (DEMO) { const r = demoRaw.reviews.find(x => x.id === rid); if (r) r.photos = 0; return recompute(); }
+    const {db, FS} = fb, rr = FS.doc(db, 'products', String(pid), 'reviews', rid);
+    const ph = await FS.getDocs(FS.collection(rr, 'photos'));
+    await delAll(ph.docs.map(x => x.ref));
+    await FS.updateDoc(rr, {photos: 0});
+  },
+  // Kabul edilen kategori başvurusu için ödül (aynı başvuruya bir kez: belge kimliği başvurunun kimliği)
+  async catReward(r0) {
+    if (DEMO || !r0.uid) return;
+    const {db, FS} = fb;
+    await FS.setDoc(FS.doc(db, 'rewards', 'cat_' + r0.id), {uid: r0.uid, pts: CAT_PTS, kind: 'category', target: r0.cat, time: FS.Timestamp.now()});
   },
   async setReq(col, key, id, data) {
     if (DEMO) { const o = demoRaw[key].find(x => x.id === id); if (o) Object.assign(o, data); return recompute(); }
